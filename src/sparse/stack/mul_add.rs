@@ -4,9 +4,9 @@
 
 use num_traits::{MulAdd, MulAddAssign};
 
+use arrayvec::Array;
 use num_traits::Zero;
 use ordered_iter::OrderedMapIterator;
-use arrayvec::Array;
 
 use super::SparseVector;
 
@@ -38,7 +38,8 @@ where
         self.components = {
             let iter = b.into_iter();
             let outer_join = self.iter().outer_join(iter);
-            outer_join.filter_map(|(index, (lhs, rhs))| {
+            outer_join
+                .filter_map(|(index, (lhs, rhs))| {
                     let value = match (lhs, rhs) {
                         (Some(l), Some(r)) => l.mul_add(a, r),
                         (Some(l), None) => l.mul_add(a, T::zero()),
@@ -61,7 +62,7 @@ mod test {
     use super::*;
 
     use std::iter::FromIterator;
-    
+
     use expectest::prelude::*;
 
     type Type = SparseVector<[(usize, f32); 6]>;
@@ -70,7 +71,14 @@ mod test {
     fn mul_add() {
         let subject = Type::from_iter(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let other = Type::from_iter(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
-        let expected = Type::from_iter(vec![(0, 0.2), (1, 0.7), (2, 1.4), (3, 0.6), (4, 2.0), (5, 4.8)]);
+        let expected = Type::from_iter(vec![
+            (0, 0.2),
+            (1, 0.7),
+            (2, 1.4),
+            (3, 0.6),
+            (4, 2.0),
+            (5, 4.8),
+        ]);
         let result = subject.mul_add(2.0, other);
         expect!(result).to(be_equal_to(expected));
     }
@@ -79,7 +87,14 @@ mod test {
     fn mul_add_ref() {
         let subject = Type::from_iter(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let other = Type::from_iter(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
-        let expected = Type::from_iter(vec![(0, 0.2), (1, 0.7), (2, 1.4), (3, 0.6), (4, 2.0), (5, 4.8)]);
+        let expected = Type::from_iter(vec![
+            (0, 0.2),
+            (1, 0.7),
+            (2, 1.4),
+            (3, 0.6),
+            (4, 2.0),
+            (5, 4.8),
+        ]);
         let result = subject.mul_add(2.0, &other);
         expect!(result).to(be_equal_to(expected));
     }
@@ -88,7 +103,14 @@ mod test {
     fn mul_add_assign() {
         let subject = Type::from_iter(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let other = Type::from_iter(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
-        let expected = Type::from_iter(vec![(0, 0.2), (1, 0.7), (2, 1.4), (3, 0.6), (4, 2.0), (5, 4.8)]);
+        let expected = Type::from_iter(vec![
+            (0, 0.2),
+            (1, 0.7),
+            (2, 1.4),
+            (3, 0.6),
+            (4, 2.0),
+            (5, 4.8),
+        ]);
 
         let mut result = subject;
         result.mul_add_assign(2.0, &other);

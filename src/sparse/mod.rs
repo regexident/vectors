@@ -6,6 +6,6 @@
 
 mod iter;
 
-pub mod stack;
 #[cfg(feature = "std")]
 pub mod heap;
+pub mod stack;

@@ -35,7 +35,8 @@ where
         self.components = {
             let iter = rhs.into_iter();
             let outer_join = self.iter().outer_join(iter);
-            outer_join.filter_map(|(index, (lhs, rhs))| {
+            outer_join
+                .filter_map(|(index, (lhs, rhs))| {
                     let value = match (lhs, rhs) {
                         (Some(l), Some(r)) => l.sub(r),
                         (Some(l), None) => l.sub(T::zero()),

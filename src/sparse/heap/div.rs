@@ -27,15 +27,16 @@ where
 {
     fn div_assign(&mut self, rhs: T) {
         self.components = {
-            self.iter().filter_map(|(index, lhs)| {
-                let value = lhs / rhs;
-                if value.is_zero() {
-                    None
-                } else {
-                    Some((index, value))
-                }
-            })
-            .collect()
+            self.iter()
+                .filter_map(|(index, lhs)| {
+                    let value = lhs / rhs;
+                    if value.is_zero() {
+                        None
+                    } else {
+                        Some((index, value))
+                    }
+                })
+                .collect()
         };
     }
 }

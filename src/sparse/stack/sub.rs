@@ -4,9 +4,9 @@
 
 use std::ops::{Sub, SubAssign};
 
+use arrayvec::Array;
 use num_traits::Zero;
 use ordered_iter::OrderedMapIterator;
-use arrayvec::Array;
 
 use super::SparseVector;
 
@@ -38,7 +38,8 @@ where
         self.components = {
             let iter = rhs.into_iter();
             let outer_join = self.iter().outer_join(iter);
-            outer_join.filter_map(|(index, (lhs, rhs))| {
+            outer_join
+                .filter_map(|(index, (lhs, rhs))| {
                     let value = match (lhs, rhs) {
                         (Some(l), Some(r)) => l.sub(r),
                         (Some(l), None) => l.sub(T::zero()),
@@ -61,7 +62,7 @@ mod test {
     use super::*;
 
     use std::iter::FromIterator;
-    
+
     use expectest::prelude::*;
 
     type Type = SparseVector<[(usize, f32); 6]>;

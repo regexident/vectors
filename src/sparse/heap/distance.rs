@@ -5,8 +5,8 @@
 use num_traits::Signed;
 use ordered_iter::OrderedMapIterator;
 
-use Distance;
 use super::SparseVector;
+use Distance;
 
 impl<T> Distance for SparseVector<T>
 where
@@ -17,10 +17,12 @@ where
     fn squared_distance(&self, rhs: &Self) -> Self::Scalar {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
-        lhs_iter.inner_join_map(rhs_iter).fold(T::zero(), |sum, (_, (lhs, rhs))| {
-            let delta = lhs - rhs;
-            sum + (delta * delta)
-        })
+        lhs_iter
+            .inner_join_map(rhs_iter)
+            .fold(T::zero(), |sum, (_, (lhs, rhs))| {
+                let delta = lhs - rhs;
+                sum + (delta * delta)
+            })
     }
 }
 

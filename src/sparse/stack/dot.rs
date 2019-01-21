@@ -4,12 +4,12 @@
 
 use std::ops::{Add, Mul};
 
+use arrayvec::Array;
 use num_traits::Zero;
 use ordered_iter::OrderedMapIterator;
-use arrayvec::Array;
 
-use Dot;
 use super::SparseVector;
+use Dot;
 
 impl<T, A> Dot for SparseVector<A>
 where
@@ -21,9 +21,9 @@ where
     fn dot(&self, rhs: &Self) -> Self::Scalar {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
-        lhs_iter.inner_join_map(rhs_iter).fold(T::zero(), |sum, (_, (lhs, rhs))| {
-            sum + (lhs * rhs)
-        })
+        lhs_iter
+            .inner_join_map(rhs_iter)
+            .fold(T::zero(), |sum, (_, (lhs, rhs))| sum + (lhs * rhs))
     }
 }
 

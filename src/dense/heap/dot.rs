@@ -4,8 +4,8 @@
 
 use num_traits::Num;
 
-use Dot;
 use super::DenseVector;
+use Dot;
 
 impl<'a, T> Dot for DenseVector<T>
 where
@@ -17,9 +17,9 @@ where
         debug_assert_eq!(self.len(), rhs.len());
         let lhs_iter = self.components.iter();
         let rhs_iter = rhs.components.iter();
-        lhs_iter.zip(rhs_iter).fold(T::zero(), |sum, (lhs, rhs)| {
-            sum + ((*lhs) * (*rhs))
-        })
+        lhs_iter
+            .zip(rhs_iter)
+            .fold(T::zero(), |sum, (lhs, rhs)| sum + ((*lhs) * (*rhs)))
     }
 }
 

@@ -8,7 +8,7 @@ use super::DenseVector;
 
 impl<T> fmt::Debug for DenseVector<T>
 where
-    T: fmt::Debug
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(f, "[");

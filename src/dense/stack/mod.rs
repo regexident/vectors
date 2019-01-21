@@ -4,26 +4,26 @@
 
 //! Dense stack-allocated vector representation.
 
-use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use num_traits::{NumAssign, MulAdd, MulAddAssign};
 use arrayvec::{Array, ArrayVec};
+use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
-use {Vector, VectorOps, VectorAssignOps};
+use {Vector, VectorAssignOps, VectorOps};
 
 mod add;
-mod sub;
-mod mul;
 mod div;
+mod mul;
 mod mul_add;
+mod sub;
 
-mod dot;
 mod distance;
+mod dot;
 
 mod debug;
 mod iter;
 
-pub use self::iter::{Iter, IntoIter};
+pub use self::iter::{IntoIter, Iter};
 
 /// A dense stack-allocated multi-dimensional vector.
 pub struct DenseVector<A>
@@ -83,7 +83,9 @@ where
 {
     #[inline]
     fn from(items: A) -> Self {
-        Self { components: ArrayVec::from(items) }
+        Self {
+            components: ArrayVec::from(items),
+        }
     }
 }
 
@@ -99,17 +101,23 @@ where
 
 impl<V, T, A> VectorOps<V, T> for DenseVector<A>
 where
-    Self: Add<V, Output = Self> + Sub<V, Output = Self> + Mul<T, Output = Self> + Div<T, Output = Self> + MulAdd<T, V, Output = Self>,
+    Self: Add<V, Output = Self>
+        + Sub<V, Output = Self>
+        + Mul<T, Output = Self>
+        + Div<T, Output = Self>
+        + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
     A: Copy + Array<Item = T>,
-{}
+{
+}
 
 impl<V, T, A> VectorAssignOps<V, T> for DenseVector<A>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign,
     A: Copy + Array<Item = T>,
-{}
+{
+}
 
 impl<T, A> Vector<T> for DenseVector<A>
 where

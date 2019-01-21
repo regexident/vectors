@@ -2,12 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use arrayvec::Array;
 use num_traits::Signed;
 use ordered_iter::OrderedMapIterator;
-use arrayvec::Array;
 
-use Distance;
 use super::SparseVector;
+use Distance;
 
 impl<T, A> Distance for SparseVector<A>
 where
@@ -19,10 +19,12 @@ where
     fn squared_distance(&self, rhs: &Self) -> Self::Scalar {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
-        lhs_iter.inner_join_map(rhs_iter).fold(T::zero(), |sum, (_, (lhs, rhs))| {
-            let delta = lhs - rhs;
-            sum + (delta * delta)
-        })
+        lhs_iter
+            .inner_join_map(rhs_iter)
+            .fold(T::zero(), |sum, (_, (lhs, rhs))| {
+                let delta = lhs - rhs;
+                sum + (delta * delta)
+            })
     }
 }
 

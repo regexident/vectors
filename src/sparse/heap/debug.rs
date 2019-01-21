@@ -8,7 +8,7 @@ use super::SparseVector;
 
 impl<T> fmt::Debug for SparseVector<T>
 where
-    T: Copy + fmt::Debug
+    T: Copy + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(f, "[");

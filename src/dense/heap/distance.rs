@@ -4,8 +4,8 @@
 
 use num_traits::Signed;
 
-use Distance;
 use super::DenseVector;
+use Distance;
 
 impl<T> Distance for DenseVector<T>
 where
@@ -17,10 +17,12 @@ where
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
         debug_assert_eq!(lhs_iter.len(), rhs_iter.len());
-        lhs_iter.zip(rhs_iter).fold(T::zero(), |sum, ((_, lhs), (_, rhs))| {
-            let delta = lhs - rhs;
-            sum + (delta * delta)
-        })
+        lhs_iter
+            .zip(rhs_iter)
+            .fold(T::zero(), |sum, ((_, lhs), (_, rhs))| {
+                let delta = lhs - rhs;
+                sum + (delta * delta)
+            })
     }
 }
 

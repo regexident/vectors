@@ -53,7 +53,7 @@ where
 mod test {
     use super::*;
 
-    use std::iter::{IntoIterator, FromIterator};
+    use std::iter::{FromIterator, IntoIterator};
 
     use expectest::prelude::*;
 

@@ -4,27 +4,27 @@
 
 //! Sparse stack-allocated vector representation.
 
-use std::ops::{Add, Sub, Mul, Div};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
+use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-use num_traits::{NumAssign, MulAdd, MulAddAssign};
 use arrayvec::{Array, ArrayVec};
+use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
-use {Vector, VectorOps, VectorAssignOps};
+use {Vector, VectorAssignOps, VectorOps};
 
 mod add;
-mod sub;
-mod mul;
 mod div;
+mod mul;
 mod mul_add;
+mod sub;
 
-mod dot;
 mod distance;
+mod dot;
 
 mod debug;
 mod iter;
 
-pub use self::iter::{Iter, IntoIter};
+pub use self::iter::{IntoIter, Iter};
 
 /// A sparse stack-allocated multi-dimensional vector.
 pub struct SparseVector<A>
@@ -84,23 +84,31 @@ where
 {
     #[inline]
     fn from(items: A) -> Self {
-        Self { components: ArrayVec::from(items) }
+        Self {
+            components: ArrayVec::from(items),
+        }
     }
 }
 
 impl<V, T, A> VectorOps<V, T> for SparseVector<A>
 where
-    Self: Add<V, Output = Self> + Sub<V, Output = Self> + Mul<T, Output = Self> + Div<T, Output = Self> + MulAdd<T, V, Output = Self>,
+    Self: Add<V, Output = Self>
+        + Sub<V, Output = Self>
+        + Mul<T, Output = Self>
+        + Div<T, Output = Self>
+        + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
     A: Array<Item = (usize, T)>,
-{}
+{
+}
 
 impl<V, T, A> VectorAssignOps<V, T> for SparseVector<A>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign,
     A: Array<Item = (usize, T)>,
-{}
+{
+}
 
 impl<T, A> Vector<T> for SparseVector<A>
 where

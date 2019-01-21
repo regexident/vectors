@@ -35,7 +35,8 @@ where
         self.components = {
             let iter = rhs.into_iter();
             let outer_join = self.iter().outer_join(iter);
-            outer_join.filter_map(|(index, (lhs, rhs))| {
+            outer_join
+                .filter_map(|(index, (lhs, rhs))| {
                     let value = match (lhs, rhs) {
                         (Some(l), Some(r)) => l.add(r),
                         (Some(l), None) => l.add(T::zero()),
@@ -63,7 +64,14 @@ mod test {
     fn add() {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
-        let expected = SparseVector::from(vec![(0, 0.2), (1, 0.6), (2, 1.2), (3, 0.3), (4, 2.0), (5, 4.4)]);
+        let expected = SparseVector::from(vec![
+            (0, 0.2),
+            (1, 0.6),
+            (2, 1.2),
+            (3, 0.3),
+            (4, 2.0),
+            (5, 4.4),
+        ]);
         let result = subject + other;
         expect!(result).to(be_equal_to(expected));
     }
@@ -72,7 +80,14 @@ mod test {
     fn add_ref() {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
-        let expected = SparseVector::from(vec![(0, 0.2), (1, 0.6), (2, 1.2), (3, 0.3), (4, 2.0), (5, 4.4)]);
+        let expected = SparseVector::from(vec![
+            (0, 0.2),
+            (1, 0.6),
+            (2, 1.2),
+            (3, 0.3),
+            (4, 2.0),
+            (5, 4.4),
+        ]);
         let result = subject + &other;
         expect!(result).to(be_equal_to(expected));
     }
@@ -81,7 +96,14 @@ mod test {
     fn add_assign() {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
-        let expected = SparseVector::from(vec![(0, 0.2), (1, 0.6), (2, 1.2), (3, 0.3), (4, 2.0), (5, 4.4)]);
+        let expected = SparseVector::from(vec![
+            (0, 0.2),
+            (1, 0.6),
+            (2, 1.2),
+            (3, 0.3),
+            (4, 2.0),
+            (5, 4.4),
+        ]);
 
         let mut result = subject;
         result += &other;

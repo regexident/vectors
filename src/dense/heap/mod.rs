@@ -4,25 +4,25 @@
 
 //! Dense heap-allocated vector representation.
 
-use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use num_traits::{NumAssign, MulAdd, MulAddAssign};
+use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
-use {Vector, VectorOps, VectorAssignOps};
+use {Vector, VectorAssignOps, VectorOps};
 
 mod add;
-mod sub;
-mod mul;
 mod div;
+mod mul;
 mod mul_add;
+mod sub;
 
-mod dot;
 mod distance;
+mod dot;
 
 mod debug;
 mod iter;
 
-pub use self::iter::{Iter, IntoIter};
+pub use self::iter::{IntoIter, Iter};
 
 /// A dense heap-allocated multi-dimensional vector.
 #[derive(Clone, PartialEq)]
@@ -59,15 +59,21 @@ impl<T> From<Vec<T>> for DenseVector<T> {
 
 impl<V, T> VectorOps<V, T> for DenseVector<T>
 where
-    Self: Add<V, Output = Self> + Sub<V, Output = Self> + Mul<T, Output = Self> + Div<T, Output = Self> + MulAdd<T, V, Output = Self>,
+    Self: Add<V, Output = Self>
+        + Sub<V, Output = Self>
+        + Mul<T, Output = Self>
+        + Div<T, Output = Self>
+        + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
-{}
+{
+}
 
 impl<V, T> VectorAssignOps<V, T> for DenseVector<T>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign,
-{}
+{
+}
 
 impl<T> Vector<T> for DenseVector<T>
 where

@@ -19,13 +19,16 @@ where
 {
     /// Creates an `IntoIter` from a base `IntoIterator` of dense components
     pub fn new(iter: I) -> Self {
-        IntoIter { index: 0, inner: iter.into_iter() }
+        IntoIter {
+            index: 0,
+            inner: iter.into_iter(),
+        }
     }
 }
 
 impl<T, I> Iterator for IntoIter<I>
 where
-    I: IntoIterator<Item = T>
+    I: IntoIterator<Item = T>,
 {
     type Item = (usize, T);
 
@@ -49,7 +52,7 @@ where
 impl<I> ExactSizeIterator for IntoIter<I>
 where
     I: IntoIterator,
-    <I as IntoIterator>::IntoIter: ExactSizeIterator
+    <I as IntoIterator>::IntoIter: ExactSizeIterator,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -68,7 +71,7 @@ where
 /// `&DenseVector`'s `IntoIter`
 pub struct Iter<'a, T>
 where
-    T: 'a
+    T: 'a,
 {
     index: usize,
     inner: <&'a [T] as IntoIterator>::IntoIter,
@@ -77,13 +80,16 @@ where
 impl<'a, T> Iter<'a, T> {
     /// Creates an `Iter` from a slice of dense components
     pub fn new(iter: &'a [T]) -> Self {
-        Iter { index: 0, inner: iter.into_iter() }
+        Iter {
+            index: 0,
+            inner: iter.into_iter(),
+        }
     }
 }
 
 impl<'a, T> Iterator for Iter<'a, T>
 where
-    T: Copy
+    T: Copy,
 {
     type Item = (usize, T);
 
@@ -104,7 +110,7 @@ where
 
 impl<'a, T> ExactSizeIterator for Iter<'a, T>
 where
-    T: Copy
+    T: Copy,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -114,7 +120,7 @@ where
 
 impl<'a, T> OrderedMapIterator for Iter<'a, T>
 where
-    T: Copy
+    T: Copy,
 {
     type Key = usize;
     type Val = T;

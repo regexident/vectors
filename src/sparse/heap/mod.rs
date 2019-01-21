@@ -4,26 +4,26 @@
 
 //! Sparse heap-allocated vector representation.
 
-use std::ops::{Add, Sub, Mul, Div};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
+use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-use num_traits::{NumAssign, MulAdd, MulAddAssign};
+use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
-use {Vector, VectorOps, VectorAssignOps};
+use {Vector, VectorAssignOps, VectorOps};
 
 mod add;
-mod sub;
-mod mul;
 mod div;
+mod mul;
 mod mul_add;
+mod sub;
 
-mod dot;
 mod distance;
+mod dot;
 
 mod debug;
 mod iter;
 
-pub use self::iter::{Iter, IntoIter};
+pub use self::iter::{IntoIter, Iter};
 
 /// A sparse heap-allocated multi-dimensional vector.
 #[derive(Clone, PartialEq)]
@@ -60,15 +60,21 @@ impl<T> From<Vec<(usize, T)>> for SparseVector<T> {
 
 impl<V, T> VectorOps<V, T> for SparseVector<T>
 where
-    Self: Add<V, Output = Self> + Sub<V, Output = Self> + Mul<T, Output = Self> + Div<T, Output = Self> + MulAdd<T, V, Output = Self>,
+    Self: Add<V, Output = Self>
+        + Sub<V, Output = Self>
+        + Mul<T, Output = Self>
+        + Div<T, Output = Self>
+        + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
-{}
+{
+}
 
 impl<V, T> VectorAssignOps<V, T> for SparseVector<T>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign,
-{}
+{
+}
 
 impl<T> Vector<T> for SparseVector<T>
 where

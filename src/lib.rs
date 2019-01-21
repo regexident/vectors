@@ -5,11 +5,9 @@
 //! Vector representations for use in high dimensional vector spaces.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #![cfg_attr(feature = "missing_mpl", feature(plugin))]
 #![cfg_attr(feature = "missing_mpl", plugin(missing_mpl))]
 #![cfg_attr(feature = "missing_mpl", deny(missing_mpl))]
-
 #![warn(missing_docs)]
 
 #[cfg(not(feature = "std"))]
@@ -23,91 +21,72 @@ extern crate std;
 #[macro_use(expect)]
 extern crate expectest;
 
+extern crate arrayvec;
 extern crate num_traits;
 extern crate ordered_iter;
-extern crate arrayvec;
 
 pub mod dense;
 pub mod sparse;
 
-use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use num_traits::{MulAdd, MulAddAssign, real::Real};
+use num_traits::{real::Real, MulAdd, MulAddAssign};
 
 /// The crate's prelude
 pub mod prelude {
     pub use super::{
-        VectorOps, VectorAssignOps,
-        Vector, VectorRef,
-        VectorAssign, VectorAssignRef,
-        Dot, Distance
+        Distance, Dot, Vector, VectorAssign, VectorAssignOps, VectorAssignRef, VectorOps, VectorRef,
     };
 }
 
 /// The trait for vector types implementing basic numeric operations.
-pub trait VectorOps<Vector, Scalar>: Sized
+pub trait VectorOps<Vector, Scalar>:
+    Sized
     + Add<Vector, Output = Self>
     + Sub<Vector, Output = Self>
     + Mul<Scalar, Output = Self>
     + Div<Scalar, Output = Self>
     + MulAdd<Scalar, Vector, Output = Self>
-{}
+{
+}
 
 /// The trait for vector types implementing numeric assignment operators (like `+ = `).
-pub trait VectorAssignOps<Vector, Scalar>: Sized
+pub trait VectorAssignOps<Vector, Scalar>:
+    Sized
     + AddAssign<Vector>
     + SubAssign<Vector>
     + MulAssign<Scalar>
     + DivAssign<Scalar>
     + MulAddAssign<Scalar, Vector>
-{}
+{
+}
 
 /// The base trait for vector types, covering comparisons,
 /// basic numeric operations, and the dot product.
 pub trait Vector<Scalar>: PartialEq + VectorOps<Self, Scalar> {
     /// The type of the `Vector`'s scalar components.
     type Scalar;
-
-    // /// Calculates the dot-product between `self` and `rhs`.
-    // fn dot(self, rhs: &Self) -> Self::Scalar;
-    //
-    // /// Calculates the squared euclidian distance between `self` and `rhs`.
-    // fn squared_distance(&self, rhs: &Self) -> Self::Scalar;
-    //
-    // /// Calculates the euclidian distance between `self` and `rhs`.
-    // fn distance(&self, rhs: &Self) -> Self::Scalar
-    // where
-    //     Self::Scalar: Real,
-    // {
-    //     self.squared_distance(rhs).sqrt()
-    // }
 }
 
 /// The trait for `Vector` types which also implement numeric operations
 // taking the second operand by reference.
-pub trait VectorRef<Scalar>: Vector<Scalar> + for<'a> VectorOps<&'a Self, Scalar> { }
+pub trait VectorRef<Scalar>: Vector<Scalar> + for<'a> VectorOps<&'a Self, Scalar> {}
 
-impl<T, S> VectorRef<S> for T
-where
-    T: Vector<S> + for<'a> VectorOps<&'a T, S>
-{}
+impl<T, S> VectorRef<S> for T where T: Vector<S> + for<'a> VectorOps<&'a T, S> {}
 
 /// The trait for `Vector` types which also implement assignment operators.
 pub trait VectorAssign<Scalar>: Vector<Scalar> + VectorAssignOps<Self, Scalar> {}
 
-impl<T, S> VectorAssign<S> for T
-where
-    T: Vector<S> + VectorAssignOps<Self, S>
-{}
+impl<T, S> VectorAssign<S> for T where T: Vector<S> + VectorAssignOps<Self, S> {}
 
 /// The trait for `VectorAssign` types which also implement
 /// assignment operations taking the second operand by reference.
-pub trait VectorAssignRef<Scalar>: VectorAssign<Scalar> + for<'a> VectorAssignOps<&'a Self, Scalar> { }
+pub trait VectorAssignRef<Scalar>:
+    VectorAssign<Scalar> + for<'a> VectorAssignOps<&'a Self, Scalar>
+{
+}
 
-impl<T, S> VectorAssignRef<S> for T
-where
-    T: VectorAssign<S> + for<'a> VectorAssignOps<&'a T, S>
-{}
+impl<T, S> VectorAssignRef<S> for T where T: VectorAssign<S> + for<'a> VectorAssignOps<&'a T, S> {}
 
 /// The trait for types supporting the calculation of the dot product
 pub trait Dot: Sized {
