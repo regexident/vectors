@@ -14,9 +14,9 @@ impl<T> Dot for SparseVector<T>
 where
     T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
 {
-    type Scalar = T;
+    type Output = T;
 
-    fn dot(&self, rhs: &Self) -> Self::Scalar {
+    fn dot(&self, rhs: &Self) -> Self::Output {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
         lhs_iter

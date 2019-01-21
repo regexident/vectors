@@ -11,9 +11,9 @@ impl<'a, T> Dot for DenseVector<T>
 where
     T: Copy + Num,
 {
-    type Scalar = T;
+    type Output = T;
 
-    fn dot(&self, rhs: &Self) -> Self::Scalar {
+    fn dot(&self, rhs: &Self) -> Self::Output {
         debug_assert_eq!(self.len(), rhs.len());
         let lhs_iter = self.components.iter();
         let rhs_iter = rhs.components.iter();

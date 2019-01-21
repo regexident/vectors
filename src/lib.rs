@@ -90,12 +90,12 @@ pub trait VectorAssignRef<Scalar>:
 impl<T, S> VectorAssignRef<S> for T where T: VectorAssign<S> + for<'a> VectorAssignOps<&'a T, S> {}
 
 /// The trait for types supporting the calculation of the dot product
-pub trait Dot: Sized {
+pub trait Dot<Rhs = Self>: Sized {
     /// The scalar type returned by `self`'s dot product
-    type Scalar;
+    type Output;
 
     /// Calculates the dot-product between `self` and `rhs`.
-    fn dot(&self, rhs: &Self) -> Self::Scalar;
+    fn dot(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// The trait for types supporting the calculation of distance
