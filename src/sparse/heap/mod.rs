@@ -58,7 +58,11 @@ impl<T> From<Vec<(usize, T)>> for SparseVector<T> {
     }
 }
 
-impl<V, T> VectorOps<V, T> for SparseVector<T>
+impl<T> Vector for SparseVector<T> {
+    type Scalar = T;
+}
+
+impl<T, V> VectorOps<T, V> for SparseVector<T>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
@@ -66,22 +70,16 @@ where
         + Div<T, Output = Self>
         + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
+    V: Vector<Scalar = T>,
 {
 }
 
-impl<V, T> VectorAssignOps<V, T> for SparseVector<T>
+impl<T, V> VectorAssignOps<T, V> for SparseVector<T>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
-    T: Copy + NumAssign + MulAddAssign,
+    T: Copy + NumAssign + MulAddAssign<T, T>,
+    V: Vector<Scalar = T>,
 {
-}
-
-impl<T> Vector<T> for SparseVector<T>
-where
-    Self: VectorOps<Self, T>,
-    T: Copy + PartialOrd + NumAssign + MulAdd<T, T, Output = T>,
-{
-    type Scalar = T;
 }
 
 #[cfg(test)]

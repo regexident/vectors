@@ -99,7 +99,14 @@ where
     }
 }
 
-impl<V, T, A> VectorOps<V, T> for DenseVector<A>
+impl<T, A> Vector for DenseVector<A>
+where
+    A: Copy + Array<Item = T>,
+{
+    type Scalar = T;
+}
+
+impl<T, V, A> VectorOps<T, V> for DenseVector<A>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
@@ -107,25 +114,18 @@ where
         + Div<T, Output = Self>
         + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
+    V: Vector<Scalar = T>,
     A: Copy + Array<Item = T>,
 {
 }
 
-impl<V, T, A> VectorAssignOps<V, T> for DenseVector<A>
+impl<T, V, A> VectorAssignOps<T, V> for DenseVector<A>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
-    T: Copy + NumAssign + MulAddAssign,
+    T: Copy + NumAssign + MulAddAssign<T, T>,
+    V: Vector<Scalar = T>,
     A: Copy + Array<Item = T>,
 {
-}
-
-impl<T, A> Vector<T> for DenseVector<A>
-where
-    Self: VectorOps<Self, T>,
-    T: Copy + NumAssign + MulAdd<T, T, Output = T>,
-    A: Copy + Array<Item = T>,
-{
-    type Scalar = T;
 }
 
 #[cfg(test)]

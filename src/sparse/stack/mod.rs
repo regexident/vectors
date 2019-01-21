@@ -90,7 +90,15 @@ where
     }
 }
 
-impl<V, T, A> VectorOps<V, T> for SparseVector<A>
+impl<T, A> Vector for SparseVector<A>
+where
+    T: Copy + NumAssign + MulAdd<T, T, Output = T>,
+    A: Array<Item = (usize, T)>,
+{
+    type Scalar = T;
+}
+
+impl<T, V, A> VectorOps<T, V> for SparseVector<A>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
@@ -98,25 +106,18 @@ where
         + Div<T, Output = Self>
         + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
+    V: Vector<Scalar = T>,
     A: Array<Item = (usize, T)>,
 {
 }
 
-impl<V, T, A> VectorAssignOps<V, T> for SparseVector<A>
+impl<T, V, A> VectorAssignOps<T, V> for SparseVector<A>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
-    T: Copy + NumAssign + MulAddAssign,
+    T: Copy + NumAssign + MulAddAssign<T, T>,
+    V: Vector<Scalar = T>,
     A: Array<Item = (usize, T)>,
 {
-}
-
-impl<T, A> Vector<T> for SparseVector<A>
-where
-    Self: VectorOps<Self, T>,
-    T: Copy + PartialOrd + NumAssign + MulAdd<T, T, Output = T>,
-    A: Array<Item = (usize, T)>,
-{
-    type Scalar = T;
 }
 
 #[cfg(test)]

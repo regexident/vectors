@@ -57,30 +57,29 @@ impl<T> From<Vec<T>> for DenseVector<T> {
     }
 }
 
-impl<V, T> VectorOps<V, T> for DenseVector<T>
+impl<T> Vector for DenseVector<T> {
+    type Scalar = T;
+}
+
+impl<T, V> VectorOps<T, V> for DenseVector<T>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
         + Mul<T, Output = Self>
         + Div<T, Output = Self>
         + MulAdd<T, V, Output = Self>,
+    V: Vector<Scalar = T> + ExactSizeIterator<Item = (usize, T)>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
+    V: Vector<Scalar = T>,
 {
 }
 
-impl<V, T> VectorAssignOps<V, T> for DenseVector<T>
+impl<T, V> VectorAssignOps<T, V> for DenseVector<T>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
-    T: Copy + NumAssign + MulAddAssign,
+    T: Copy + NumAssign + MulAddAssign<T, T>,
+    V: Vector<Scalar = T>,
 {
-}
-
-impl<T> Vector<T> for DenseVector<T>
-where
-    Self: VectorOps<Self, T>,
-    T: Copy + NumAssign + MulAdd<T, T, Output = T>,
-{
-    type Scalar = T;
 }
 
 #[cfg(test)]
