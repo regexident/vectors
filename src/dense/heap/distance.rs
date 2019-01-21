@@ -11,9 +11,9 @@ impl<T> Distance for DenseVector<T>
 where
     T: Copy + Signed,
 {
-    type Scalar = T;
+    type Output = T;
 
-    fn squared_distance(&self, rhs: &Self) -> Self::Scalar {
+    fn squared_distance(&self, rhs: &Self) -> Self::Output {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
         debug_assert_eq!(lhs_iter.len(), rhs_iter.len());

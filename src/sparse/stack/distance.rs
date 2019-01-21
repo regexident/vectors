@@ -14,9 +14,9 @@ where
     T: Copy + Signed,
     A: Array<Item = (usize, T)>,
 {
-    type Scalar = T;
+    type Output = T;
 
-    fn squared_distance(&self, rhs: &Self) -> Self::Scalar {
+    fn squared_distance(&self, rhs: &Self) -> Self::Output {
         let lhs_iter = self.iter();
         let rhs_iter = rhs.iter();
         lhs_iter
