@@ -4,14 +4,11 @@
 
 use std::ops::{Sub, SubAssign};
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A, V> Sub<V> for DenseVector<A>
+impl<T, V, const N: usize> Sub<V> for DenseVector<T, N>
 where
     T: SubAssign<T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {
@@ -24,10 +21,9 @@ where
     }
 }
 
-impl<T, A, V> SubAssign<V> for DenseVector<A>
+impl<T, V, const N: usize> SubAssign<V> for DenseVector<T, N>
 where
     T: SubAssign<T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {

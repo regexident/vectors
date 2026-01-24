@@ -4,16 +4,13 @@
 
 use std::iter::FromIterator;
 
-use arrayvec::{Array, ArrayVec};
+use arrayvec::ArrayVec;
 
 use super::DenseVector;
 
 pub use dense::iter::{IntoIter, Iter};
 
-impl<T, A> FromIterator<T> for DenseVector<A>
-where
-    A: Array<Item = T>,
-{
+impl<T, const N: usize> FromIterator<T> for DenseVector<T, N> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut components = ArrayVec::new();
@@ -22,12 +19,9 @@ where
     }
 }
 
-impl<T, A> IntoIterator for DenseVector<A>
-where
-    A: Array<Item = T>,
-{
+impl<T, const N: usize> IntoIterator for DenseVector<T, N> {
     type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = IntoIter<ArrayVec<A>>;
+    type IntoIter = IntoIter<ArrayVec<T, N>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -35,10 +29,9 @@ where
     }
 }
 
-impl<'a, T, A> IntoIterator for &'a DenseVector<A>
+impl<'a, T, const N: usize> IntoIterator for &'a DenseVector<T, N>
 where
     T: 'a + Copy,
-    A: Array<Item = T>,
 {
     type Item = <Self::IntoIter as Iterator>::Item;
     type IntoIter = Iter<'a, T>;

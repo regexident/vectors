@@ -4,17 +4,16 @@
 
 use std::ops::{Div, DivAssign};
 
-use arrayvec::Array;
+
 use num_traits::Zero;
 
 use super::SparseVector;
 
-impl<T, A> Div<T> for SparseVector<A>
+impl<T, const N: usize> Div<T> for SparseVector<T, N>
 where
     T: Copy + Zero + Div<T, Output = T>,
-    A: Array<Item = (usize, T)>,
 {
-    type Output = SparseVector<A>;
+    type Output = SparseVector<T, N>;
 
     #[inline]
     fn div(mut self, rhs: T) -> Self::Output {
@@ -23,10 +22,9 @@ where
     }
 }
 
-impl<T, A> DivAssign<T> for SparseVector<A>
+impl<T, const N: usize> DivAssign<T> for SparseVector<T, N>
 where
     T: Copy + Zero + Div<T, Output = T>,
-    A: Array<Item = (usize, T)>,
 {
     fn div_assign(&mut self, rhs: T) {
         self.components = {

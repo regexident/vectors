@@ -6,7 +6,7 @@
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use arrayvec::{Array, ArrayVec};
+use arrayvec::ArrayVec;
 use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
 use {Vector, VectorAssignOps, VectorOps};
@@ -26,17 +26,11 @@ mod iter;
 pub use self::iter::{IntoIter, Iter};
 
 /// A dense stack-allocated multi-dimensional vector.
-pub struct DenseVector<A>
-where
-    A: Array,
-{
-    components: ArrayVec<A>,
+pub struct DenseVector<T, const N: usize> {
+    components: ArrayVec<T, N>,
 }
 
-impl<T, A> DenseVector<A>
-where
-    A: Array<Item = T>,
-{
+impl<T, const N: usize> DenseVector<T, N> {
     /// The number of components in `self`
     #[inline]
     pub fn len(&self) -> usize {
@@ -56,10 +50,9 @@ where
     }
 }
 
-impl<T, A> Clone for DenseVector<A>
+impl<T, const N: usize> Clone for DenseVector<T, N>
 where
     T: Clone,
-    A: Array<Item = T>,
 {
     fn clone(&self) -> Self {
         let components = self.components.clone();
@@ -67,46 +60,39 @@ where
     }
 }
 
-impl<T, A> PartialEq for DenseVector<A>
+impl<T, const N: usize> PartialEq for DenseVector<T, N>
 where
     T: PartialEq,
-    A: Array<Item = T>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.components.eq(&other.components)
     }
 }
 
-impl<T, A> From<A> for DenseVector<A>
-where
-    A: Array<Item = T>,
-{
+impl<T, const N: usize> From<[T; N]> for DenseVector<T, N> {
     #[inline]
-    fn from(items: A) -> Self {
+    fn from(items: [T; N]) -> Self {
         Self {
             components: ArrayVec::from(items),
         }
     }
 }
 
-impl<T, A> From<ArrayVec<A>> for DenseVector<A>
-where
-    A: Array<Item = T>,
-{
+impl<T, const N: usize> From<ArrayVec<T, N>> for DenseVector<T, N> {
     #[inline]
-    fn from(items: ArrayVec<A>) -> Self {
+    fn from(items: ArrayVec<T, N>) -> Self {
         Self { components: items }
     }
 }
 
-impl<T, A> Vector for DenseVector<A>
+impl<T, const N: usize> Vector for DenseVector<T, N>
 where
-    A: Copy + Array<Item = T>,
+    T: Copy,
 {
     type Scalar = T;
 }
 
-impl<T, V, A> VectorOps<T, V> for DenseVector<A>
+impl<T, V, const N: usize> VectorOps<T, V> for DenseVector<T, N>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
@@ -115,16 +101,14 @@ where
         + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
     V: Vector<Scalar = T>,
-    A: Copy + Array<Item = T>,
 {
 }
 
-impl<T, V, A> VectorAssignOps<T, V> for DenseVector<A>
+impl<T, V, const N: usize> VectorAssignOps<T, V> for DenseVector<T, N>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign<T, T>,
     V: Vector<Scalar = T>,
-    A: Copy + Array<Item = T>,
 {
 }
 
@@ -137,7 +121,7 @@ mod test {
     #[test]
     fn from() {
         const VALUES: [f32; 5] = [0.0, 1.0, 0.5, 0.25, 0.125];
-        let subject = DenseVector::from(VALUES.clone());
+        let subject = DenseVector::from(VALUES);
         let expected = ArrayVec::from(VALUES);
         expect!(subject.components).to(be_equal_to(expected));
     }

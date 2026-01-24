@@ -4,16 +4,13 @@
 
 use std::ops::{Mul, MulAssign};
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A> Mul<T> for DenseVector<A>
+impl<T, const N: usize> Mul<T> for DenseVector<T, N>
 where
     T: Copy + MulAssign<T>,
-    A: Array<Item = T>,
 {
-    type Output = DenseVector<A>;
+    type Output = DenseVector<T, N>;
 
     #[inline]
     fn mul(mut self, rhs: T) -> Self::Output {
@@ -22,10 +19,9 @@ where
     }
 }
 
-impl<T, A> MulAssign<T> for DenseVector<A>
+impl<T, const N: usize> MulAssign<T> for DenseVector<T, N>
 where
     T: Copy + MulAssign<T>,
-    A: Array<Item = T>,
 {
     fn mul_assign(&mut self, rhs: T) {
         for lhs in &mut self.components {

@@ -4,17 +4,17 @@
 
 use std::ops::{Add, Mul};
 
-use arrayvec::Array;
+
 use num_traits::Zero;
 use ordered_iter::OrderedMapIterator;
 
 use super::SparseVector;
 use Dot;
 
-impl<T, A> Dot for SparseVector<A>
+impl<T, const N: usize> Dot for SparseVector<T, N>
 where
     T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
-    A: Array<Item = (usize, T)>,
+    
 {
     type Output = T;
 

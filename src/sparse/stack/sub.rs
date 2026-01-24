@@ -4,16 +4,15 @@
 
 use std::ops::{Sub, SubAssign};
 
-use arrayvec::Array;
+
 use num_traits::Zero;
 use ordered_iter::OrderedMapIterator;
 
 use super::SparseVector;
 
-impl<T, A, V> Sub<V> for SparseVector<A>
+impl<T, V, const N: usize> Sub<V> for SparseVector<T, N>
 where
     T: Copy + Zero + Sub<T, Output = T>,
-    A: Array<Item = (usize, T)>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator + OrderedMapIterator<Key = usize, Val = T>,
 {
@@ -26,10 +25,9 @@ where
     }
 }
 
-impl<T, A, V> SubAssign<V> for SparseVector<A>
+impl<T, V, const N: usize> SubAssign<V> for SparseVector<T, N>
 where
     T: Copy + Zero + Sub<T, Output = T>,
-    A: Array<Item = (usize, T)>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator + OrderedMapIterator<Key = usize, Val = T>,
 {
@@ -65,7 +63,7 @@ mod test {
 
     use expectest::prelude::*;
 
-    type Type = SparseVector<[(usize, f32); 6]>;
+    type Type = SparseVector<f32, 6>;
 
     #[test]
     fn sub() {

@@ -4,16 +4,13 @@
 
 use std::ops::{Div, DivAssign};
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A> Div<T> for DenseVector<A>
+impl<T, const N: usize> Div<T> for DenseVector<T, N>
 where
     T: Copy + DivAssign<T>,
-    A: Array<Item = T>,
 {
-    type Output = DenseVector<A>;
+    type Output = DenseVector<T, N>;
 
     #[inline]
     fn div(mut self, rhs: T) -> Self::Output {
@@ -22,10 +19,9 @@ where
     }
 }
 
-impl<T, A> DivAssign<T> for DenseVector<A>
+impl<T, const N: usize> DivAssign<T> for DenseVector<T, N>
 where
     T: Copy + DivAssign<T>,
-    A: Array<Item = T>,
 {
     #[inline]
     fn div_assign(&mut self, rhs: T) {

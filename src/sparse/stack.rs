@@ -7,7 +7,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-use arrayvec::{Array, ArrayVec};
+use arrayvec::ArrayVec;
 use num_traits::{MulAdd, MulAddAssign, NumAssign};
 
 use {Vector, VectorAssignOps, VectorOps};
@@ -27,17 +27,11 @@ mod iter;
 pub use self::iter::{IntoIter, Iter};
 
 /// A sparse stack-allocated multi-dimensional vector.
-pub struct SparseVector<A>
-where
-    A: Array,
-{
-    components: ArrayVec<A>,
+pub struct SparseVector<T, const N: usize> {
+    components: ArrayVec<(usize, T), N>,
 }
 
-impl<T, A> SparseVector<A>
-where
-    A: Array<Item = (usize, T)>,
-{
+impl<T, const N: usize> SparseVector<T, N> {
     /// The number of components in `self`
     #[inline]
     pub fn len(&self) -> usize {
@@ -57,10 +51,9 @@ where
     }
 }
 
-impl<T, A> Clone for SparseVector<A>
+impl<T, const N: usize> Clone for SparseVector<T, N>
 where
     T: Clone,
-    A: Array<Item = (usize, T)>,
 {
     fn clone(&self) -> Self {
         let components = self.components.clone();
@@ -68,37 +61,32 @@ where
     }
 }
 
-impl<T, A> PartialEq for SparseVector<A>
+impl<T, const N: usize> PartialEq for SparseVector<T, N>
 where
     T: PartialEq,
-    A: Array<Item = (usize, T)>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.components.eq(&other.components)
     }
 }
 
-impl<T, A> From<A> for SparseVector<A>
-where
-    A: Array<Item = (usize, T)>,
-{
+impl<T, const N: usize> From<[(usize, T); N]> for SparseVector<T, N> {
     #[inline]
-    fn from(items: A) -> Self {
+    fn from(items: [(usize, T); N]) -> Self {
         Self {
             components: ArrayVec::from(items),
         }
     }
 }
 
-impl<T, A> Vector for SparseVector<A>
+impl<T, const N: usize> Vector for SparseVector<T, N>
 where
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
-    A: Array<Item = (usize, T)>,
 {
     type Scalar = T;
 }
 
-impl<T, V, A> VectorOps<T, V> for SparseVector<A>
+impl<T, V, const N: usize> VectorOps<T, V> for SparseVector<T, N>
 where
     Self: Add<V, Output = Self>
         + Sub<V, Output = Self>
@@ -107,16 +95,14 @@ where
         + MulAdd<T, V, Output = Self>,
     T: Copy + NumAssign + MulAdd<T, T, Output = T>,
     V: Vector<Scalar = T>,
-    A: Array<Item = (usize, T)>,
 {
 }
 
-impl<T, V, A> VectorAssignOps<T, V> for SparseVector<A>
+impl<T, V, const N: usize> VectorAssignOps<T, V> for SparseVector<T, N>
 where
     Self: AddAssign<V> + SubAssign<V> + MulAssign<T> + DivAssign<T> + MulAddAssign<T, V>,
     T: Copy + NumAssign + MulAddAssign<T, T>,
     V: Vector<Scalar = T>,
-    A: Array<Item = (usize, T)>,
 {
 }
 
@@ -129,7 +115,7 @@ mod test {
     #[test]
     fn from() {
         const VALUES: [(usize, f32); 5] = [(0, 0.0), (1, 1.0), (2, 0.5), (4, 0.25), (8, 0.125)];
-        let subject = SparseVector::from(VALUES.clone());
+        let subject = SparseVector::from(VALUES);
         let expected = ArrayVec::from(VALUES);
         expect!(subject.components).to(be_equal_to(expected));
     }

@@ -17,7 +17,7 @@ repository = "https://github.com/deepthought/vectors"
 version = "0.3.0"
 
 [dependencies]
-arrayvec = "~0.4"
+arrayvec = "^0.7"
 num-traits = "~0.2"
 ordered_iter = "~0.1"
 

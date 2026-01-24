@@ -4,14 +4,11 @@
 
 use std::ops::{Add, AddAssign};
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A, V> Add<V> for DenseVector<A>
+impl<T, V, const N: usize> Add<V> for DenseVector<T, N>
 where
     T: AddAssign<T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {
@@ -24,10 +21,9 @@ where
     }
 }
 
-impl<T, A, V> AddAssign<V> for DenseVector<A>
+impl<T, V, const N: usize> AddAssign<V> for DenseVector<T, N>
 where
     T: AddAssign<T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {

@@ -4,15 +4,12 @@
 
 use num_traits::Num;
 
-use arrayvec::Array;
-
 use super::DenseVector;
 use Dot;
 
-impl<T, A> Dot for DenseVector<A>
+impl<T, const N: usize> Dot for DenseVector<T, N>
 where
     T: Copy + Num,
-    A: Array<Item = T>,
 {
     type Output = T;
 

@@ -4,17 +4,16 @@
 
 use std::ops::{Mul, MulAssign};
 
-use arrayvec::Array;
+
 use num_traits::Zero;
 
 use super::SparseVector;
 
-impl<T, A> Mul<T> for SparseVector<A>
+impl<T, const N: usize> Mul<T> for SparseVector<T, N>
 where
     T: Copy + Zero + Mul<T, Output = T>,
-    A: Array<Item = (usize, T)>,
 {
-    type Output = SparseVector<A>;
+    type Output = SparseVector<T, N>;
 
     fn mul(mut self, rhs: T) -> Self::Output {
         self.mul_assign(rhs);
@@ -22,10 +21,9 @@ where
     }
 }
 
-impl<T, A> MulAssign<T> for SparseVector<A>
+impl<T, const N: usize> MulAssign<T> for SparseVector<T, N>
 where
     T: Copy + Zero + Mul<T, Output = T>,
-    A: Array<Item = (usize, T)>,
 {
     fn mul_assign(&mut self, rhs: T) {
         self.components = {

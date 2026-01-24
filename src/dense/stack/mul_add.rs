@@ -4,14 +4,11 @@
 
 use num_traits::{MulAdd, MulAddAssign};
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A, V> MulAdd<T, V> for DenseVector<A>
+impl<T, V, const N: usize> MulAdd<T, V> for DenseVector<T, N>
 where
     T: Copy + MulAddAssign<T, T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {
@@ -24,10 +21,9 @@ where
     }
 }
 
-impl<T, A, V> MulAddAssign<T, V> for DenseVector<A>
+impl<T, V, const N: usize> MulAddAssign<T, V> for DenseVector<T, N>
 where
     T: Copy + MulAddAssign<T, T>,
-    A: Array<Item = T>,
     V: IntoIterator<Item = (usize, T)>,
     <V as IntoIterator>::IntoIter: ExactSizeIterator,
 {

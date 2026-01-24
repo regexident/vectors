@@ -4,22 +4,20 @@
 
 use std::fmt;
 
-use arrayvec::Array;
-
 use super::SparseVector;
 
-impl<T, A> fmt::Debug for SparseVector<A>
+impl<T, const N: usize> fmt::Debug for SparseVector<T, N>
 where
     T: Copy + fmt::Debug,
-    A: Array<Item = (usize, T)>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(f, "[");
         for (fmt_idx, (index, value)) in self.iter().enumerate() {
-            try! {
-                if fmt_idx > 0 { write!(f, ", ({}, {:?})", index, value) }
-                else { write!(f, "({}, {:?})", index, value) }
-            };
+            if fmt_idx > 0 {
+                write!(f, ", ({}, {:?})", index, value)?
+            } else {
+                write!(f, "({}, {:?})", index, value)?
+            }
         }
         let _ = write!(f, "]");
         Ok(())

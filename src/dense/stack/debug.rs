@@ -4,21 +4,19 @@
 
 use std::fmt;
 
-use arrayvec::Array;
-
 use super::DenseVector;
 
-impl<T, A> fmt::Debug for DenseVector<A>
+impl<T, const N: usize> fmt::Debug for DenseVector<T, N>
 where
     T: fmt::Debug,
-    A: Array<Item = T>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(f, "[");
         for (index, item) in self.components.iter().enumerate() {
-            try! {
-                if index > 0 { write!(f, ", {:?}", item) }
-                else { write!(f, "{:?}", item) }
+            if index > 0 {
+                write!(f, ", {:?}", item)?
+            } else {
+                write!(f, "{:?}", item)?
             }
         }
         let _ = write!(f, "]");

@@ -4,15 +4,12 @@
 
 use num_traits::Signed;
 
-use arrayvec::Array;
-
 use super::DenseVector;
 use Distance;
 
-impl<T, A> Distance for DenseVector<A>
+impl<T, const N: usize> Distance for DenseVector<T, N>
 where
     T: Copy + Signed,
-    A: Array<Item = T>,
 {
     type Output = T;
 

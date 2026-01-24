@@ -2,17 +2,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use arrayvec::Array;
+
 use num_traits::Signed;
 use ordered_iter::OrderedMapIterator;
 
 use super::SparseVector;
 use Distance;
 
-impl<T, A> Distance for SparseVector<A>
+impl<T, const N: usize> Distance for SparseVector<T, N>
 where
     T: Copy + Signed,
-    A: Array<Item = (usize, T)>,
+    
 {
     type Output = T;
 

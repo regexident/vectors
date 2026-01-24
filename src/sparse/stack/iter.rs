@@ -4,16 +4,13 @@
 
 use std::iter::FromIterator;
 
-use arrayvec::{Array, ArrayVec};
+use arrayvec::ArrayVec;
 
 use super::SparseVector;
 
 pub use sparse::iter::{IntoIter, Iter};
 
-impl<T, A> FromIterator<(usize, T)> for SparseVector<A>
-where
-    A: Array<Item = (usize, T)>,
-{
+impl<T, const N: usize> FromIterator<(usize, T)> for SparseVector<T, N> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = (usize, T)>>(iter: I) -> Self {
         let mut components = ArrayVec::new();
@@ -22,12 +19,9 @@ where
     }
 }
 
-impl<T, A> IntoIterator for SparseVector<A>
-where
-    A: Array<Item = (usize, T)>,
-{
+impl<T, const N: usize> IntoIterator for SparseVector<T, N> {
     type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = IntoIter<ArrayVec<A>>;
+    type IntoIter = IntoIter<ArrayVec<(usize, T), N>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -35,10 +29,9 @@ where
     }
 }
 
-impl<'a, T, A> IntoIterator for &'a SparseVector<A>
+impl<'a, T, const N: usize> IntoIterator for &'a SparseVector<T, N>
 where
     T: 'a + Copy,
-    A: Array<Item = (usize, T)>,
 {
     type Item = <Self::IntoIter as Iterator>::Item;
     type IntoIter = Iter<'a, T>;
