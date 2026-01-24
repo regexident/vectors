@@ -21,14 +21,9 @@ arrayvec = "^0.7"
 num-traits = "~0.2"
 ordered_iter = "~0.1"
 
-[dependencies.missing_mpl]
-optional = true
-version = "~0.1"
-
 [dev-dependencies]
 expectest = "~0.9"
 
 [features]
 default = ["std"]
-nightly = ["missing_mpl"]
 std = []
