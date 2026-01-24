@@ -58,7 +58,6 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn sub() {
@@ -66,7 +65,7 @@ mod test {
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let expected = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (3, -0.3), (4, 2.0)]);
         let result = subject - other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -75,7 +74,7 @@ mod test {
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let expected = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (3, -0.3), (4, 2.0)]);
         let result = subject - &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -86,6 +85,6 @@ mod test {
 
         let mut result = subject;
         result -= &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 }

@@ -46,7 +46,6 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn from_iter() {
@@ -54,7 +53,7 @@ mod test {
         let iter = values.iter().cloned();
         let subject = DenseVector::from_iter(iter);
         let expected = ArrayVec::from(values);
-        expect!(subject.components).to(be_equal_to(expected));
+        assert_eq!(subject.components, expected);
     }
 
     #[test]
@@ -63,6 +62,6 @@ mod test {
         let subject = DenseVector::from(values.clone());
         let expected = vec![(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4), (4, 0.5)];
         let output: Vec<_> = subject.into_iter().collect();
-        expect!(output).to(be_equal_to(expected));
+        assert_eq!(output, expected);
     }
 }

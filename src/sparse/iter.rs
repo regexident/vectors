@@ -117,7 +117,6 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn into_iter() {
@@ -125,7 +124,7 @@ mod test {
         let iter = IntoIter::new(values.clone());
         let subject: Vec<_> = iter.collect();
         let expected = values;
-        expect!(subject).to(be_equal_to(expected));
+        assert_eq!(subject, expected);
     }
 
     #[test]
@@ -136,6 +135,6 @@ mod test {
             iter.collect()
         };
         let expected = values;
-        expect!(subject).to(be_equal_to(expected));
+        assert_eq!(subject, expected);
     }
 }

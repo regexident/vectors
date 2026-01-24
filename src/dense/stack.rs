@@ -116,13 +116,12 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn from() {
         const VALUES: [f32; 5] = [0.0, 1.0, 0.5, 0.25, 0.125];
         let subject = DenseVector::from(VALUES);
         let expected = ArrayVec::from(VALUES);
-        expect!(subject.components).to(be_equal_to(expected));
+        assert_eq!(subject.components, expected);
     }
 }

@@ -86,12 +86,11 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn from() {
         let values: Vec<_> = vec![0.0; 5];
         let subject = DenseVector::from(values.clone());
-        expect!(subject.components).to(be_equal_to(values));
+        assert_eq!(subject.components, values);
     }
 }

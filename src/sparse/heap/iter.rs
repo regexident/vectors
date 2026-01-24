@@ -45,13 +45,12 @@ mod test {
 
     use std::iter::{FromIterator, IntoIterator};
 
-    use expectest::prelude::*;
 
     #[test]
     fn from_iter() {
         let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
         let subject = SparseVector::from_iter(values.clone());
-        expect!(subject.components).to(be_equal_to(values));
+        assert_eq!(subject.components, values);
     }
 
     #[test]
@@ -59,6 +58,6 @@ mod test {
         let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
         let subject = SparseVector::from_iter(values.clone());
         let output: Vec<_> = subject.into_iter().collect();
-        expect!(output).to(be_equal_to(values));
+        assert_eq!(output, values);
     }
 }

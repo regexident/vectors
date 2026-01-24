@@ -39,7 +39,6 @@ mod test {
 
     use num_traits::{MulAdd, MulAddAssign};
 
-    use expectest::prelude::*;
 
     #[test]
     fn mul_add() {
@@ -47,7 +46,7 @@ mod test {
         let other = DenseVector::from(vec![2.0, 1.0, 0.0, -1.0, -2.0]);
         let expected = DenseVector::from(vec![4.0, 2.5, 1.0, 0.0, -1.0]);
         let result = other.mul_add(2.0, &subject);
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -57,6 +56,6 @@ mod test {
         let expected = DenseVector::from(vec![4.0, 2.5, 1.0, 0.0, -1.0]);
         let mut result = other;
         result.mul_add_assign(2.0, &subject);
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 }

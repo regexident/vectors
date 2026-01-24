@@ -22,7 +22,7 @@ num-traits = "~0.2"
 ordered_iter = "~0.1"
 
 [dev-dependencies]
-expectest = "~0.9"
+approx = "0.5"
 
 [features]
 default = ["std"]

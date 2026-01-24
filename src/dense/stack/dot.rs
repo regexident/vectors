@@ -27,13 +27,13 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn dot() {
         let subject = DenseVector::from([0.0, 0.5, 1.0, 2.0, 4.0]);
         let other = DenseVector::from([0.1, 0.2, 0.3, 0.4, 0.0]);
         let dot = subject.dot(&other);
-        expect!(dot).to(be_close_to(1.2));
+        assert_relative_eq!(dot, 1.2, epsilon = 0.001);
     }
 }

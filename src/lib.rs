@@ -15,8 +15,7 @@ extern crate core as std;
 extern crate std;
 
 #[cfg(test)]
-#[macro_use(expect)]
-extern crate expectest;
+extern crate approx;
 
 extern crate arrayvec;
 extern crate num_traits;

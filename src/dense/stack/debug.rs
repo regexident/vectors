@@ -28,13 +28,12 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn debug() {
         let vector = DenseVector::from([0.0, 0.25, 0.5, 0.75, 1.0]);
         let subject = format!("{:?}", vector);
         let expected = "[0.0, 0.25, 0.5, 0.75, 1.0]";
-        expect!(subject).to(be_equal_to(expected));
+        assert_eq!(subject, expected);
     }
 }

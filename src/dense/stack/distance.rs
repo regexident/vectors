@@ -30,14 +30,14 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn squared_distance() {
         let subject = DenseVector::from([0.0, 0.5, 1.0, 2.0, 4.0]);
         let other = DenseVector::from([0.1, 0.2, 0.3, 0.4, 0.0]);
         let squared_distance = subject.squared_distance(&other);
-        expect!(squared_distance).to(be_close_to(19.15));
+        assert_relative_eq!(squared_distance, 19.15, epsilon = 0.001);
     }
 
     #[test]
@@ -45,6 +45,6 @@ mod test {
         let subject = DenseVector::from([0.0, 0.5, 1.0, 2.0, 4.0]);
         let other = DenseVector::from([0.1, 0.2, 0.3, 0.4, 0.0]);
         let distance = subject.distance(&other);
-        expect!(distance).to(be_close_to(4.376));
+        assert_relative_eq!(distance, 4.376, epsilon = 0.001);
     }
 }

@@ -29,13 +29,13 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn dot() {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4), (6, 0.5)]);
         let dot = subject.dot(&other);
-        expect!(dot).to(be_close_to(1.85));
+        assert_relative_eq!(dot, 1.85, epsilon = 0.001);
     }
 }

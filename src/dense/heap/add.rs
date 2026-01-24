@@ -37,7 +37,6 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn add() {
@@ -45,7 +44,7 @@ mod test {
         let other = DenseVector::from(vec![2.0, 1.0, 0.0, -1.0, -2.0]);
         let expected = DenseVector::from(vec![2.0, 1.5, 1.0, 1.0, 1.0]);
         let result = subject + &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -55,6 +54,6 @@ mod test {
         let expected = DenseVector::from(vec![2.0, 1.5, 1.0, 1.0, 1.0]);
         let mut result = subject;
         result += &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 }

@@ -30,14 +30,14 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn squared_distance() {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4), (6, 0.5)]);
         let squared_distance = subject.squared_distance(&other);
-        expect!(squared_distance).to(be_close_to(13.76));
+        assert_relative_eq!(squared_distance, 13.76, epsilon = 0.001);
     }
 
     #[test]
@@ -45,6 +45,6 @@ mod test {
         let subject = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let other = SparseVector::from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4), (6, 0.5)]);
         let distance = subject.distance(&other);
-        expect!(distance).to(be_close_to(3.71));
+        assert_relative_eq!(distance, 3.71, epsilon = 0.001);
     }
 }

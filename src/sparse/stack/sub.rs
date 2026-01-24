@@ -61,7 +61,6 @@ mod test {
 
     use std::iter::FromIterator;
 
-    use expectest::prelude::*;
 
     type Type = SparseVector<f32, 6>;
 
@@ -71,7 +70,7 @@ mod test {
         let other = Type::from_iter(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let expected = Type::from_iter(vec![(0, 0.2), (1, 0.5), (2, 1.0), (3, -0.3), (4, 2.0)]);
         let result = subject - other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -80,7 +79,7 @@ mod test {
         let other = Type::from_iter(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4)]);
         let expected = Type::from_iter(vec![(0, 0.2), (1, 0.5), (2, 1.0), (3, -0.3), (4, 2.0)]);
         let result = subject - &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -91,6 +90,6 @@ mod test {
 
         let mut result = subject;
         result -= &other;
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 }

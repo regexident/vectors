@@ -58,7 +58,6 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn mul_add() {
@@ -73,7 +72,7 @@ mod test {
             (5, 4.8),
         ]);
         let result = subject.mul_add(2.0, other);
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -89,7 +88,7 @@ mod test {
             (5, 4.8),
         ]);
         let result = subject.mul_add(2.0, &other);
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -107,6 +106,6 @@ mod test {
 
         let mut result = subject;
         result.mul_add_assign(2.0, &other);
-        expect!(result).to(be_equal_to(expected));
+        assert_eq!(result, expected);
     }
 }

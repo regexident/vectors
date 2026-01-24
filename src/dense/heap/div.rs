@@ -34,14 +34,13 @@ where
 mod test {
     use super::*;
 
-    use expectest::prelude::*;
 
     #[test]
     fn div() {
         let subject = DenseVector::from(vec![0.0, 1.0, 2.0, 4.0, 6.0]);
         let other = DenseVector::from(vec![0.0, 0.5, 1.0, 2.0, 3.0]);
         let result = subject / 2.0;
-        expect!(result).to(be_equal_to(other));
+        assert_eq!(result, other);
     }
 
     #[test]
@@ -50,6 +49,6 @@ mod test {
         let other = DenseVector::from(vec![0.0, 0.5, 1.0, 2.0, 3.0]);
         let mut result = subject;
         result /= 2.0;
-        expect!(result).to(be_equal_to(other));
+        assert_eq!(result, other);
     }
 }
