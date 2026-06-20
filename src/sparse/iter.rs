@@ -1,32 +1,26 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-use ordered_iter::OrderedMapIterator;
-
-/// `SparseVector`'s `IntoIter`
-pub struct IntoIter<I>
+/// `SparseVector`'s `IntoIter`.
+pub struct IntoIter<S>
 where
-    I: IntoIterator,
+    S: IntoIterator,
 {
-    inner: <I as IntoIterator>::IntoIter,
+    inner: <S as IntoIterator>::IntoIter,
 }
 
-impl<I> IntoIter<I>
+impl<S> IntoIter<S>
 where
-    I: IntoIterator,
+    S: IntoIterator,
 {
-    /// Creates an `IntoIter` from a base `IntoIterator` of dense components
-    pub fn new(iter: I) -> Self {
+    /// Creates an `IntoIter` from storage.
+    pub fn new(storage: S) -> Self {
         IntoIter {
-            inner: iter.into_iter(),
+            inner: storage.into_iter(),
         }
     }
 }
 
-impl<T, I> Iterator for IntoIter<I>
+impl<T, S> Iterator for IntoIter<S>
 where
-    I: IntoIterator<Item = (usize, T)>,
+    S: IntoIterator<Item = (usize, T)>,
 {
     type Item = (usize, T);
 
@@ -41,10 +35,10 @@ where
     }
 }
 
-impl<T, I> ExactSizeIterator for IntoIter<I>
+impl<T, S> ExactSizeIterator for IntoIter<S>
 where
-    I: IntoIterator<Item = (usize, T)>,
-    <I as IntoIterator>::IntoIter: ExactSizeIterator,
+    S: IntoIterator<Item = (usize, T)>,
+    <S as IntoIterator>::IntoIter: ExactSizeIterator,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -52,28 +46,17 @@ where
     }
 }
 
-impl<T, I> OrderedMapIterator for IntoIter<I>
-where
-    I: IntoIterator<Item = (usize, T)>,
-{
-    type Key = usize;
-    type Val = T;
-}
-
-/// `&SparseVector`'s `IntoIter`
-pub struct Iter<'a, T>
-where
-    T: 'a,
-{
-    inner: <&'a [(usize, T)] as IntoIterator>::IntoIter,
+/// `&SparseVector`'s `Iter`.
+pub struct Iter<'a, T> {
+    inner: std::slice::Iter<'a, (usize, T)>,
 }
 
 impl<'a, T> Iter<'a, T> {
-    /// Creates an `Iter` from a slice of dense components
+    /// Creates an `Iter` from a slice of sparse components.
     #[inline]
-    pub fn new(iter: &'a [(usize, T)]) -> Self {
+    pub fn new(slice: &'a [(usize, T)]) -> Self {
         Iter {
-            inner: iter.into_iter(),
+            inner: slice.iter(),
         }
     }
 }
@@ -86,7 +69,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|pair| *pair)
+        self.inner.next().copied()
     }
 
     #[inline]
@@ -105,36 +88,25 @@ where
     }
 }
 
-impl<'a, T> OrderedMapIterator for Iter<'a, T>
-where
-    T: Copy,
-{
-    type Key = usize;
-    type Val = T;
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
+    use crate::sparse::SparseVector;
 
     #[test]
     fn into_iter() {
         let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
-        let iter = IntoIter::new(values.clone());
-        let subject: Vec<_> = iter.collect();
-        let expected = values;
-        assert_eq!(subject, expected);
+        let sv = SparseVector::from(values.clone());
+        let subject: Vec<_> = sv.into_iter().collect();
+        assert_eq!(subject, values);
     }
 
     #[test]
     fn iter() {
         let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
-        let subject: Vec<_> = {
-            let iter = Iter::new(&values[..]);
-            iter.collect()
-        };
-        let expected = values;
-        assert_eq!(subject, expected);
+        let sv = SparseVector::from(values.clone());
+        let subject: Vec<_> = sv.iter().collect();
+        assert_eq!(subject, values);
     }
 }

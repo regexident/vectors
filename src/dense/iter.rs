@@ -1,34 +1,28 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-use ordered_iter::OrderedMapIterator;
-
-/// `DenseVector`'s `IntoIter`
-pub struct IntoIter<I>
+/// `DenseVector`'s `IntoIter`.
+pub struct IntoIter<S>
 where
-    I: IntoIterator,
+    S: IntoIterator,
 {
     index: usize,
-    inner: <I as IntoIterator>::IntoIter,
+    inner: <S as IntoIterator>::IntoIter,
 }
 
-impl<I> IntoIter<I>
+impl<S> IntoIter<S>
 where
-    I: IntoIterator,
+    S: IntoIterator,
 {
-    /// Creates an `IntoIter` from a base `IntoIterator` of dense components
-    pub fn new(iter: I) -> Self {
+    /// Creates an `IntoIter` from storage.
+    pub fn new(storage: S) -> Self {
         IntoIter {
             index: 0,
-            inner: iter.into_iter(),
+            inner: storage.into_iter(),
         }
     }
 }
 
-impl<T, I> Iterator for IntoIter<I>
+impl<T, S> Iterator for IntoIter<S>
 where
-    I: IntoIterator<Item = T>,
+    S: IntoIterator<Item = T>,
 {
     type Item = (usize, T);
 
@@ -49,10 +43,10 @@ where
     }
 }
 
-impl<I> ExactSizeIterator for IntoIter<I>
+impl<S> ExactSizeIterator for IntoIter<S>
 where
-    I: IntoIterator,
-    <I as IntoIterator>::IntoIter: ExactSizeIterator,
+    S: IntoIterator,
+    <S as IntoIterator>::IntoIter: ExactSizeIterator,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -60,29 +54,18 @@ where
     }
 }
 
-impl<T, I> OrderedMapIterator for IntoIter<I>
-where
-    I: IntoIterator<Item = T>,
-{
-    type Key = usize;
-    type Val = T;
-}
-
-/// `&DenseVector`'s `IntoIter`
-pub struct Iter<'a, T>
-where
-    T: 'a,
-{
+/// `&DenseVector`'s `Iter`.
+pub struct Iter<'a, T> {
     index: usize,
-    inner: <&'a [T] as IntoIterator>::IntoIter,
+    inner: std::slice::Iter<'a, T>,
 }
 
 impl<'a, T> Iter<'a, T> {
-    /// Creates an `Iter` from a slice of dense components
-    pub fn new(iter: &'a [T]) -> Self {
+    /// Creates an `Iter` from a slice of dense components.
+    pub fn new(slice: &'a [T]) -> Self {
         Iter {
             index: 0,
-            inner: iter.into_iter(),
+            inner: slice.iter(),
         }
     }
 }
@@ -118,18 +101,11 @@ where
     }
 }
 
-impl<'a, T> OrderedMapIterator for Iter<'a, T>
-where
-    T: Copy,
-{
-    type Key = usize;
-    type Val = T;
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
+    use crate::dense::DenseVector;
 
     #[test]
     fn into_iter() {
@@ -143,9 +119,17 @@ mod test {
     #[test]
     fn iter() {
         let values = vec![0.1, 0.2, 0.3, 0.4, 0.5];
-        let iter = Iter::new(&values[..]);
-        let subject: Vec<_> = iter.collect();
+        let dv = DenseVector::from(values);
+        let subject: Vec<_> = dv.iter().collect();
         let expected = vec![(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4), (4, 0.5)];
         assert_eq!(subject, expected);
+    }
+
+    #[test]
+    fn from_iter() {
+        let values = vec![0.1, 0.2, 0.3, 0.4, 0.5];
+        let subject: DenseVector<_, Vec<_>> = values.into_iter().collect();
+        let expected: Vec<_> = vec![0.1, 0.2, 0.3, 0.4, 0.5];
+        assert_eq!(subject.as_slice(), expected.as_slice());
     }
 }
