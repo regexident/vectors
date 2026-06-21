@@ -4,6 +4,7 @@ use num_traits::Zero;
 
 use crate::{
     Dot, Index, Value,
+    common::dot_mixed,
     dense::{DenseStorage, DenseVector, GenericDenseVec},
 };
 
@@ -41,23 +42,7 @@ where
     type Output = T;
 
     fn dot(&self, rhs: &GenericDenseVec<T, S2>) -> Self::Output {
-        let (sparse_indices, sparse_values): (&[Idx], &[T]) = (self.indices(), self.values());
-        let dense_values: &[T] = rhs.values();
-
-        let mut sum = T::zero();
-
-        let mut sparse_pos = 0;
-        let mut dense_pos = Idx::zero();
-
-        for dense_val in dense_values.iter() {
-            if sparse_pos < sparse_indices.len() && sparse_indices[sparse_pos] == dense_pos {
-                sum = sum + sparse_values[sparse_pos] * *dense_val;
-                sparse_pos += 1;
-            }
-            dense_pos += Idx::one();
-        }
-
-        sum
+        dot_mixed(rhs.values(), self.indices(), self.values())
     }
 }
 

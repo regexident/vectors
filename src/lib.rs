@@ -30,6 +30,7 @@ use num_traits::{Num, One, Zero};
 pub mod dense;
 pub mod sparse;
 
+mod common;
 mod iter;
 
 pub use self::iter::*;

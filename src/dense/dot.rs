@@ -1,5 +1,6 @@
 use num_traits::Num;
 
+use crate::common::dot_mixed;
 use crate::dense::DenseVector as _;
 use crate::sparse::{GenericSparseVec, SparseStorage, SparseVector as _};
 use crate::{Dot, Index, Value};
@@ -40,23 +41,7 @@ where
         &self,
         rhs: &GenericSparseVec<Idx, T, S2>,
     ) -> <Self as Dot<GenericSparseVec<Idx, T, S2>>>::Output {
-        let (sparse_indices, sparse_values): (&[Idx], &[T]) = (rhs.indices(), rhs.values());
-        let dense_values: &[T] = self.values();
-
-        let mut sum = T::zero();
-
-        let mut sparse_pos = 0;
-        let mut dense_pos = Idx::zero();
-
-        for dense_val in dense_values.iter() {
-            if sparse_pos < sparse_indices.len() && sparse_indices[sparse_pos] == dense_pos {
-                sum = sum + sparse_values[sparse_pos] * *dense_val;
-                sparse_pos += 1;
-            }
-            dense_pos += Idx::one();
-        }
-
-        sum
+        dot_mixed(self.values(), rhs.indices(), rhs.values())
     }
 }
 
