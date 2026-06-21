@@ -32,7 +32,7 @@ mod join;
 mod ops;
 mod storage;
 
-pub use self::dot::{dot_adaptive, dot_branchless, dot_gallop, dot_merge};
+pub use self::dot::dot_gallop;
 pub use self::iter::*;
 pub use self::join::*;
 pub use self::storage::*;

@@ -1,87 +1,74 @@
 use std::ops::{Add, Mul};
 
-use num_traits::{One, Zero};
+use num_traits::Zero;
 
 use crate::{
     Dot, Index, Value,
     dense::{DenseStorage, DenseVector, GenericDenseVec},
 };
 
-use super::join::ADAPTIVE_THRESHOLD;
 use super::{GenericSparseVec, SparseStorage, SparseVector};
 
-/// Dot product using the classic merge-join strategy.
-///
-/// Compares indices at the current position of each side and advances
-/// the smaller side until a match is found. O(n + m) comparisons.
-#[inline]
-pub fn dot_merge<Idx, T>(lhs_i: &[Idx], lhs_v: &[T], rhs_i: &[Idx], rhs_v: &[T]) -> T
+impl<Idx, T, S> Dot for GenericSparseVec<Idx, T, S>
 where
     Idx: Ord + Copy,
-    T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
+    T: Copy + Mul<Output = T> + Zero + Add<Output = T>,
+    S: SparseStorage<Idx, T>,
 {
-    let mut i = 0;
-    let mut j = 0;
-    let mut sum = T::zero();
+    type Output = T;
 
-    while i < lhs_i.len() && j < rhs_i.len() {
-        let ai = lhs_i[i];
-        let bi = rhs_i[j];
-
-        if ai == bi {
-            sum = sum + (lhs_v[i] * rhs_v[j]);
-            i += 1;
-            j += 1;
-        } else if ai < bi {
-            i += 1;
+    fn dot(&self, rhs: &Self) -> Self::Output {
+        let (lhs_i, lhs_v) = (self.storage.indices(), self.storage.values());
+        let (rhs_i, rhs_v) = (rhs.storage.indices(), rhs.storage.values());
+        if lhs_i.is_empty() || rhs_i.is_empty() {
+            return T::zero();
+        }
+        if lhs_i.len() <= rhs_i.len() {
+            dot_gallop(lhs_i, lhs_v, rhs_i, rhs_v)
         } else {
-            j += 1;
+            dot_gallop(rhs_i, rhs_v, lhs_i, lhs_v)
         }
     }
-
-    sum
 }
 
-/// Dot product using branchless comparison masks.
-///
-/// Computes an equality mask (1.0 when indices match, 0.0 otherwise)
-/// and uses it to unconditionally accumulate the product — eliminating
-/// the equality branch at the cost of a predictable multiply-by-zero on
-/// non-matching positions. Pointer advancement also uses boolean-to-usize
-/// casts to avoid branches.
-#[inline]
-pub fn dot_branchless<Idx, T>(lhs_i: &[Idx], lhs_v: &[T], rhs_i: &[Idx], rhs_v: &[T]) -> T
+impl<Idx, T, S, S2> Dot<GenericDenseVec<T, S2>> for GenericSparseVec<Idx, T, S>
 where
-    Idx: Ord + Copy,
-    T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero + One,
+    Idx: Index,
+    T: Value,
+    S: SparseStorage<Idx, T>,
+    S2: DenseStorage<T>,
 {
-    let (na, nb) = (lhs_i.len(), rhs_i.len());
-    let (mut i, mut j) = (0, 0);
-    let mut acc = T::zero();
+    type Output = T;
 
-    while i < na && j < nb {
-        let ai = lhs_i[i];
-        let bj = rhs_i[j];
+    fn dot(&self, rhs: &GenericDenseVec<T, S2>) -> Self::Output {
+        let (sparse_indices, sparse_values): (&[Idx], &[T]) = (self.indices(), self.values());
+        let dense_values: &[T] = rhs.values();
 
-        let eq = ai == bj;
-        let lt = ai < bj;
+        let mut sum = T::zero();
 
-        let mask = if eq { T::one() } else { T::zero() };
-        acc = acc + mask * (lhs_v[i] * rhs_v[j]);
+        let mut sparse_pos = 0;
+        let mut dense_pos = Idx::zero();
 
-        i += (eq || lt) as usize;
-        j += (eq || !lt) as usize;
+        for dense_val in dense_values.iter() {
+            if sparse_pos < sparse_indices.len() && sparse_indices[sparse_pos] == dense_pos {
+                sum = sum + sparse_values[sparse_pos] * *dense_val;
+                sparse_pos += 1;
+            }
+            dense_pos += Idx::one();
+        }
+
+        sum
     }
-
-    acc
 }
 
 /// Dot product using galloping (exponential) search on the larger array.
 ///
 /// Iterates over the smaller side element-by-element, using exponential
 /// probes to skip ahead in the larger side. O(small * log large) in the
-/// worst case. Most effective when one side is at least
-/// [`ADAPTIVE_THRESHOLD`] times the size of the other.
+/// worst case.
+///
+/// The caller must pass the *smaller* side as `small_i`/`small_v` and the
+/// *larger* side as `large_i`/`large_v` for optimal performance.
 #[inline]
 pub fn dot_gallop<Idx, T>(small_i: &[Idx], small_v: &[T], large_i: &[Idx], large_v: &[T]) -> T
 where
@@ -119,7 +106,7 @@ where
             loop {
                 let probe = cursor.saturating_add(step);
                 if probe >= n {
-                    break (last_lt, 0);
+                    break (last_lt, n - last_lt - 1);
                 }
                 if unsafe { *large_i.get_unchecked(probe) } >= target {
                     break (last_lt, step);
@@ -127,7 +114,7 @@ where
                 last_lt = probe;
                 step = match step.checked_shl(1) {
                     Some(s) => s,
-                    None => break (last_lt, 0),
+                    None => break (last_lt, n - last_lt - 1),
                 };
             }
         };
@@ -139,7 +126,7 @@ where
 
         // Phase 2: one-sided galloping — only advance the lower bound
         // forward with successively halved step sizes.
-        let mut step = final_step >> 1;
+        let mut step = final_step.next_power_of_two() >> 1;
         let mut pos = last_lt;
         while step > 0 {
             let probe = pos + step;
@@ -162,90 +149,6 @@ where
     sum
 }
 
-/// Dot product with adaptive dispatch between merge and galloping strategies.
-///
-/// Delegates to [`dot_merge`] for balanced inputs and [`dot_gallop`] when one
-/// side is at least `threshold` times the size of the other.
-#[inline]
-pub fn dot_adaptive<Idx, T>(
-    lhs_i: &[Idx],
-    lhs_v: &[T],
-    rhs_i: &[Idx],
-    rhs_v: &[T],
-    threshold: usize,
-) -> T
-where
-    Idx: Ord + Copy,
-    T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
-{
-    let (n, m) = (lhs_i.len(), rhs_i.len());
-
-    if n == 0 || m == 0 {
-        return T::zero();
-    }
-
-    if n <= m {
-        if m >= threshold * n.max(1) {
-            dot_gallop(lhs_i, lhs_v, rhs_i, rhs_v)
-        } else {
-            dot_merge(lhs_i, lhs_v, rhs_i, rhs_v)
-        }
-    } else if n >= threshold * m.max(1) {
-        dot_gallop(rhs_i, rhs_v, lhs_i, lhs_v)
-    } else {
-        dot_merge(lhs_i, lhs_v, rhs_i, rhs_v)
-    }
-}
-
-impl<Idx, T, S> Dot for GenericSparseVec<Idx, T, S>
-where
-    Idx: Ord + Copy,
-    T: Copy + Mul<Output = T> + Zero + Add<Output = T>,
-    S: SparseStorage<Idx, T>,
-{
-    type Output = T;
-
-    fn dot(&self, rhs: &Self) -> Self::Output {
-        dot_adaptive(
-            self.storage.indices(),
-            self.storage.values(),
-            rhs.storage.indices(),
-            rhs.storage.values(),
-            ADAPTIVE_THRESHOLD,
-        )
-    }
-}
-
-impl<Idx, T, S, S2> Dot<GenericDenseVec<T, S2>> for GenericSparseVec<Idx, T, S>
-where
-    Idx: Index,
-    T: Value,
-    S: SparseStorage<Idx, T>,
-    S2: DenseStorage<T>,
-{
-    type Output = T;
-
-    fn dot(&self, rhs: &GenericDenseVec<T, S2>) -> Self::Output {
-        let (sparse_indices, sparse_values): (&[Idx], &[T]) = (self.indices(), self.values());
-        let dense_values: &[T] = rhs.values();
-
-        let mut sum = T::zero();
-
-        let mut sparse_pos = 0;
-        let mut dense_pos = Idx::zero();
-
-        for dense_val in dense_values.iter() {
-            if sparse_pos < sparse_indices.len() && sparse_indices[sparse_pos] == dense_pos {
-                sum = sum + sparse_values[sparse_pos] * *dense_val;
-                sparse_pos += 1;
-            }
-            dense_pos += Idx::one();
-        }
-
-        sum
-    }
-}
-
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
@@ -259,24 +162,24 @@ mod tests {
         Vector::try_from_iter(pairs.iter().copied()).unwrap()
     }
 
-    /// Verify all four dot variants produce the same result across diverse inputs.
+    /// Run `dot_gallop` on both orderings and verify they agree.
     fn check_all(l_i: &[usize], l_v: &[f64], r_i: &[usize], r_v: &[f64]) {
-        let m = dot_merge(l_i, l_v, r_i, r_v);
-        let g = if l_i.len() <= r_i.len() {
-            dot_gallop(l_i, l_v, r_i, r_v)
-        } else {
-            dot_gallop(r_i, r_v, l_i, l_v)
-        };
-        let a = dot_adaptive(l_i, l_v, r_i, r_v, ADAPTIVE_THRESHOLD);
-        let b = dot_branchless(l_i, l_v, r_i, r_v);
-
-        assert_relative_eq!(m, g, epsilon = 1e-12);
-        assert_relative_eq!(m, a, epsilon = 1e-12);
-        assert_relative_eq!(m, b, epsilon = 1e-12);
+        if l_i.is_empty() || r_i.is_empty() {
+            let forward = if l_i.len() <= r_i.len() {
+                dot_gallop(l_i, l_v, r_i, r_v)
+            } else {
+                dot_gallop(r_i, r_v, l_i, l_v)
+            };
+            assert_relative_eq!(forward, 0.0, epsilon = 1e-12);
+            return;
+        }
+        let forward = dot_gallop(l_i, l_v, r_i, r_v);
+        let reverse = dot_gallop(r_i, r_v, l_i, l_v);
+        assert_relative_eq!(forward, reverse, epsilon = 1e-12);
     }
 
     #[test]
-    fn all_variants_agree() {
+    fn all_inputs_agree() {
         check_all(
             &[0, 1, 2, 4, 5],
             &[0.2, 0.5, 1.0, 2.0, 4.0],
@@ -321,5 +224,41 @@ mod tests {
         let a = make_v(&[(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]);
         let b = make_v(&[(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4), (6, 0.5)]);
         assert_relative_eq!(a.dot(&b), 1.85, epsilon = 0.001);
+    }
+
+    #[test]
+    fn gallop_single_element_near_end() {
+        let a_i: Vec<usize> = (0..10).map(|i| i * 2).collect(); // [0,2,4,6,8,10,12,14,16,18]
+        let a_v: Vec<f64> = vec![1.0; 10];
+        let b_i = [18usize];
+        let b_v = [2.5f64];
+        assert_eq!(dot_gallop(&b_i, &b_v, &a_i, &a_v), 2.5);
+    }
+
+    #[test]
+    fn gallop_single_element_at_first() {
+        let a_i: Vec<usize> = (1..=9).collect(); // [1,2,3,4,5,6,7,8,9]
+        let a_v: Vec<f64> = vec![1.0; 9];
+        let b_i = [1usize];
+        let b_v = [3.0f64];
+        assert_eq!(dot_gallop(&b_i, &b_v, &a_i, &a_v), 3.0);
+    }
+
+    #[test]
+    fn gallop_single_in_middle() {
+        let a_i: Vec<usize> = (1..=9).collect(); // [1,2,3,4,5,6,7,8,9]
+        let a_v: Vec<f64> = (0..9).map(|i| (i + 1) as f64).collect();
+        let b_i = [5usize];
+        let b_v = [10.0f64];
+        assert_eq!(dot_gallop(&b_i, &b_v, &a_i, &a_v), 50.0);
+    }
+
+    #[test]
+    fn gallop_no_match_single() {
+        let a_i: Vec<usize> = (1..=9).step_by(2).collect(); // [1,3,5,7,9]
+        let a_v: Vec<f64> = vec![1.0; 5];
+        let b_i = [2usize];
+        let b_v = [10.0f64];
+        assert_eq!(dot_gallop(&b_i, &b_v, &a_i, &a_v), 0.0);
     }
 }

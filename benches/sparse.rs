@@ -7,10 +7,7 @@ use num_traits::MulAdd;
 use vectors::Distance;
 use vectors::Dot;
 use vectors::TryFromIterator;
-use vectors::sparse::{
-    Join, SparseVec, dot_adaptive, dot_branchless, dot_gallop, dot_merge, inner_join,
-    inner_join_adaptive, inner_join_galloping, outer_join,
-};
+use vectors::sparse::{Join, SparseVec, dot_gallop, inner_join, outer_join};
 
 type SparsePair = (Vec<(usize, f64)>, Vec<(usize, f64)>);
 
@@ -200,48 +197,24 @@ fn add_sparse_benches(
 
     // MARK: Dot benchmarks (slice-based)
 
-    group.bench_function("dot_merge", |bencher| {
-        bencher.iter(|| {
-            black_box(dot_merge(
-                black_box(&a_i),
-                black_box(&a_v),
-                black_box(&b_i),
-                black_box(&b_v),
-            ))
-        })
-    });
-
-    group.bench_function("dot_branchless", |bencher| {
-        bencher.iter(|| {
-            black_box(dot_branchless(
-                black_box(&a_i),
-                black_box(&a_v),
-                black_box(&b_i),
-                black_box(&b_v),
-            ))
-        })
-    });
-
     group.bench_function("dot_gallop", |bencher| {
         bencher.iter(|| {
-            black_box(dot_gallop(
-                black_box(&a_i),
-                black_box(&a_v),
-                black_box(&b_i),
-                black_box(&b_v),
-            ))
-        })
-    });
-
-    group.bench_function("dot_adaptive", |bencher| {
-        bencher.iter(|| {
-            black_box(dot_adaptive(
-                black_box(&a_i),
-                black_box(&a_v),
-                black_box(&b_i),
-                black_box(&b_v),
-                vectors::sparse::ADAPTIVE_THRESHOLD,
-            ))
+            let (s_i, s_v, l_i, l_v) = if a_i.len() <= b_i.len() {
+                (
+                    black_box(&a_i),
+                    black_box(&a_v),
+                    black_box(&b_i),
+                    black_box(&b_v),
+                )
+            } else {
+                (
+                    black_box(&b_i),
+                    black_box(&b_v),
+                    black_box(&a_i),
+                    black_box(&a_v),
+                )
+            };
+            black_box(dot_gallop(s_i, s_v, l_i, l_v))
         })
     });
 
@@ -277,50 +250,6 @@ fn add_sparse_benches(
     });
 }
 
-/// Sweep `dot_adaptive` and `inner_join_adaptive` across thresholds.
-/// Uncomment the call sites in `bench_sparse` to enable.
-#[allow(dead_code)]
-fn add_threshold_benches(
-    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
-    a: &[(usize, f64)],
-    b: &[(usize, f64)],
-) {
-    let a_i: Vec<usize> = a.iter().map(|(i, _)| *i).collect();
-    let a_v: Vec<f64> = a.iter().map(|(_, v)| *v).collect();
-    let b_i: Vec<usize> = b.iter().map(|(i, _)| *i).collect();
-    let b_v: Vec<f64> = b.iter().map(|(_, v)| *v).collect();
-    let thresholds = [2, 4, 8, 16, 32, 64, 128];
-
-    for &t in &thresholds {
-        group.bench_function(format!("inner_join_adaptive/t={t}"), |bencher| {
-            bencher.iter(|| {
-                let result: Vec<(usize, f64)> = inner_join_adaptive(
-                    black_box(&a_i),
-                    black_box(&a_v),
-                    black_box(&b_i),
-                    black_box(&b_v),
-                    |_key: usize, l: &f64, r: &f64| *l + *r,
-                );
-                black_box(result);
-            })
-        });
-    }
-
-    for &t in &thresholds {
-        group.bench_function(format!("dot_adaptive/t={t}"), |bencher| {
-            bencher.iter(|| {
-                black_box(dot_adaptive(
-                    black_box(&a_i),
-                    black_box(&a_v),
-                    black_box(&b_i),
-                    black_box(&b_v),
-                    t,
-                ))
-            })
-        });
-    }
-}
-
 fn bench_sparse(c: &mut Criterion) {
     let (a, b) = generate_balanced_high_overlap(1000);
     add_sparse_benches(
@@ -338,28 +267,12 @@ fn bench_sparse(c: &mut Criterion) {
 
     let (a, b) = generate_skewed_low_overlap(100, 100_000);
     add_sparse_benches(&mut c.benchmark_group("sparse/skewed_low_overlap"), &a, &b);
-    // Re-enable to sweep `dot_adaptive` and `inner_join_adaptive` thresholds:
-    // add_threshold_benches(
-    //     &mut c.benchmark_group("sparse/threshold_skewed_low_overlap"),
-    //     &a,
-    //     &b,
-    // );
 
     let (a, b) = generate_skewed_no_overlap(100, 100_000);
     add_sparse_benches(&mut c.benchmark_group("sparse/skewed_no_overlap"), &a, &b);
-    // add_threshold_benches(
-    //     &mut c.benchmark_group("sparse/threshold_skewed_no_overlap"),
-    //     &a,
-    //     &b,
-    // );
 
     let (a, b) = generate_extreme_skew(10, 1_000_000);
     add_sparse_benches(&mut c.benchmark_group("sparse/extreme_skew"), &a, &b);
-    // add_threshold_benches(
-    //     &mut c.benchmark_group("sparse/threshold_extreme_skew"),
-    //     &a,
-    //     &b,
-    // );
 }
 
 criterion_group!(benches, bench_sparse);
