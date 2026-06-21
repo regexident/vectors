@@ -75,6 +75,17 @@ where
     Idx: Ord + Copy,
     T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
 {
+    assert_eq!(
+        small_i.len(),
+        small_v.len(),
+        "parallel slice length mismatch"
+    );
+    assert_eq!(
+        large_i.len(),
+        large_v.len(),
+        "parallel slice length mismatch"
+    );
+
     let mut sum = T::zero();
     let mut cursor = 0;
     let n = large_i.len();
@@ -88,6 +99,8 @@ where
 
         let current = unsafe { *large_i.get_unchecked(cursor) };
         if current == target {
+            assert!(k < small_v.len());
+            assert!(cursor < large_v.len());
             sum = sum + (unsafe { *small_v.get_unchecked(k) * *large_v.get_unchecked(cursor) });
             cursor += 1;
             continue;
@@ -139,6 +152,8 @@ where
         let insertion = pos + 1;
 
         if insertion < n && unsafe { *large_i.get_unchecked(insertion) } == target {
+            assert!(k < small_v.len());
+            assert!(insertion < large_v.len());
             sum = sum + (unsafe { *small_v.get_unchecked(k) * *large_v.get_unchecked(insertion) });
             cursor = insertion + 1;
         } else {

@@ -244,6 +244,13 @@ where
     T: 'a,
     Idx: 'a + Ord + Copy,
 {
+    assert_eq!(left_i.len(), left_v.len(), "parallel slice length mismatch");
+    assert_eq!(
+        right_i.len(),
+        right_v.len(),
+        "parallel slice length mismatch"
+    );
+
     if left_i.len() <= right_i.len() {
         InnerJoin {
             small_i: left_i,
