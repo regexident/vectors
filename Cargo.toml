@@ -1,29 +1,30 @@
 [package]
-authors = ["Vincent Esche <regexident@gmail.com>"]
+name = "vectors"
+description = "Sparse & dense vectors for use in high dimensional vector spaces"
 categories = ["science"]
-description = "Sparse & dense vectors for use in high dimensional vector spaces."
-documentation = "https://docs.rs/svm"
+repository = "https://github.com/Regexident/vectors"
 keywords = [
     "vectors",
     "dense",
     "sparse",
+    "machine-learning",
     "vector-space",
     "linear-algebra",
 ]
 license = "MPL-2.0"
-name = "vectors"
 readme = "README.md"
-repository = "https://github.com/deepthought/vectors"
+edition = "2024"
 version = "0.3.0"
 
 [dependencies]
 arrayvec = "^0.7"
-num-traits = "~0.2"
-ordered_iter = "~0.1"
+num-traits = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 approx = "0.5"
+proptest = "1"
 
 [features]
 default = ["std"]
-std = []
+std = ["num-traits/std"]
+libm = ["num-traits/libm"]
