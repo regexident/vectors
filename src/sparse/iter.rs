@@ -1,26 +1,35 @@
-/// `SparseVector`'s `IntoIter`.
-pub struct IntoIter<S>
-where
-    S: IntoIterator,
-{
-    inner: <S as IntoIterator>::IntoIter,
+use std::iter::{Copied, Zip};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::IntoIter as VecIntoIter;
+
+// MARK: Slice Storage
+
+/// A borrowing iterator over a sparse vector's `(index, value)` pairs,
+/// backed by parallel slices.
+pub struct SparseSliceIter<'a, Idx, T> {
+    inner: Zip<Copied<core::slice::Iter<'a, Idx>>, Copied<core::slice::Iter<'a, T>>>,
 }
 
-impl<S> IntoIter<S>
+impl<'a, Idx, T> SparseSliceIter<'a, Idx, T>
 where
-    S: IntoIterator,
+    Idx: Copy,
+    T: Copy,
 {
-    /// Creates an `IntoIter` from storage.
-    pub fn new(storage: S) -> Self {
-        IntoIter {
-            inner: storage.into_iter(),
+    pub(crate) fn new(
+        indices: core::slice::Iter<'a, Idx>,
+        values: core::slice::Iter<'a, T>,
+    ) -> Self {
+        Self {
+            inner: indices.copied().zip(values.copied()),
         }
     }
 }
 
-impl<Idx, T, S> Iterator for IntoIter<S>
+impl<'a, Idx, T> Iterator for SparseSliceIter<'a, Idx, T>
 where
-    S: IntoIterator<Item = (Idx, T)>,
+    Idx: Copy,
+    T: Copy,
 {
     type Item = (Idx, T);
 
@@ -35,78 +44,118 @@ where
     }
 }
 
-impl<Idx, T, S> ExactSizeIterator for IntoIter<S>
+impl<'a, Idx, T> ExactSizeIterator for SparseSliceIter<'a, Idx, T>
 where
-    S: IntoIterator<Item = (Idx, T)>,
-    <S as IntoIterator>::IntoIter: ExactSizeIterator,
+    Idx: Copy,
+    T: Copy,
 {
-    #[inline]
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
 }
 
-/// `&SparseVector`'s `Iter`.
-pub struct Iter<'a, Idx, T> {
-    inner: std::slice::Iter<'a, (Idx, T)>,
+// MARK: Vec Storage
+
+/// An owning iterator over a sparse vector's `(index, value)` pairs,
+/// backed by parallel [`Vec`] into-iterators.
+#[cfg(feature = "alloc")]
+pub struct SparseVecIntoIter<Idx, T> {
+    inner: Zip<VecIntoIter<Idx>, VecIntoIter<T>>,
 }
 
-impl<'a, Idx, T> Iter<'a, Idx, T> {
-    /// Creates an `Iter` from a slice of sparse components.
-    #[inline]
-    pub fn new(slice: &'a [(Idx, T)]) -> Self {
-        Iter {
-            inner: slice.iter(),
+#[cfg(feature = "alloc")]
+impl<Idx, T> SparseVecIntoIter<Idx, T> {
+    /// Creates an `IntoIter` from storage.
+    pub fn new(indices: VecIntoIter<Idx>, values: VecIntoIter<T>) -> Self {
+        SparseVecIntoIter {
+            inner: indices.zip(values),
         }
     }
 }
 
-impl<'a, Idx, T> Iterator for Iter<'a, Idx, T>
-where
-    Idx: Copy,
-    T: Copy,
-{
+#[cfg(feature = "alloc")]
+impl<Idx, T> Iterator for SparseVecIntoIter<Idx, T> {
     type Item = (Idx, T);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().copied()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        self.inner.next()
     }
 }
 
-impl<'a, Idx, T> ExactSizeIterator for Iter<'a, Idx, T>
-where
-    Idx: Copy,
-    T: Copy,
-{
+#[cfg(feature = "alloc")]
+impl<Idx, T> ExactSizeIterator for SparseVecIntoIter<Idx, T> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-#[cfg(test)]
+// MARK: ArrayVec Storage
+
+/// An owning iterator over a sparse vector's `(index, value)` pairs,
+/// backed by parallel [`ArrayVec`](arrayvec::ArrayVec) into-iterators
+/// with capacity `N`.
+pub struct SparseArrayVecIntoIter<Idx, T, const N: usize> {
+    inner: Zip<arrayvec::IntoIter<Idx, N>, arrayvec::IntoIter<T, N>>,
+}
+
+impl<Idx, T, const N: usize> SparseArrayVecIntoIter<Idx, T, N> {
+    /// Creates a new `SparseArrayVecIntoIter` from parallel
+    /// [`arrayvec::IntoIter`] streams for indices and values.
+    pub fn new(indices: arrayvec::IntoIter<Idx, N>, values: arrayvec::IntoIter<T, N>) -> Self {
+        SparseArrayVecIntoIter {
+            inner: indices.zip(values),
+        }
+    }
+}
+
+impl<Idx, T, const N: usize> Iterator for SparseArrayVecIntoIter<Idx, T, N> {
+    type Item = (Idx, T);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+impl<Idx, T, const N: usize> ExactSizeIterator for SparseArrayVecIntoIter<Idx, T, N> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
 mod test {
-    use crate::sparse::SparseVector;
+    use arrayvec::ArrayVec;
+
+    use super::*;
 
     #[test]
-    fn into_iter() {
-        let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
-        let sv = SparseVector::try_from(values.clone()).unwrap();
-        let subject: Vec<_> = sv.into_iter().collect();
-        assert_eq!(subject, values);
+    fn slice_iter() {
+        let indices = [0, 1, 2, 3, 4];
+        let values = [0.1, 0.2, 0.3, 0.4, 0.5];
+        let iter = SparseSliceIter::new(indices.iter(), values.iter());
+        let actual: Vec<(u32, f32)> = iter.collect();
+        let expected = vec![(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4), (4, 0.5)];
+        assert_eq!(actual, expected);
     }
 
     #[test]
-    fn iter() {
-        let values = vec![(0, 0.1), (1, 0.2), (2, 0.3), (4, 0.4), (5, 0.5)];
-        let sv = SparseVector::try_from(values.clone()).unwrap();
-        let subject: Vec<_> = sv.iter().collect();
-        assert_eq!(subject, values);
+    fn vec_into_iter() {
+        let indices = vec![0, 1, 2, 3, 4];
+        let values = vec![0.1, 0.2, 0.3, 0.4, 0.5];
+        let iter = SparseVecIntoIter::new(indices.into_iter(), values.into_iter());
+        let actual: Vec<(u32, f32)> = iter.collect();
+        let expected = vec![(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4), (4, 0.5)];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn array_vec_into_iter() {
+        let indices = ArrayVec::from([0, 1, 2, 3, 4]);
+        let values = ArrayVec::from([0.1, 0.2, 0.3, 0.4, 0.5]);
+        let iter = SparseArrayVecIntoIter::new(indices.into_iter(), values.into_iter());
+        let actual: Vec<(u32, f32)> = iter.collect();
+        let expected = vec![(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4), (4, 0.5)];
+        assert_eq!(actual, expected);
     }
 }

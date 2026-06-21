@@ -7,160 +7,179 @@
 //!
 //! | Alias | Storage | Description |
 //! |-------|---------|-------------|
-//! | `HeapDenseVector<T>` | `Vec<T>` | Heap-allocated |
-//! | `StackDenseVector<T, const N>` | `ArrayVec<T, N>` | Stack-allocated, fixed capacity |
+//! | `DenseVec<T>` | `Vec<T>` | Heap-allocated |
+//! | `DenseArrayVec<T, const N>` | `ArrayVec<T, N>` | Stack-allocated, fixed capacity |
 
-use arrayvec::ArrayVec;
-use std::iter::FromIterator;
+use core::fmt;
 use std::marker::PhantomData;
+use std::ops::Range;
 
+use crate::FromIteratorLossy;
+use crate::Index;
+use crate::TryFromIterator;
 use crate::Vector;
-use crate::storage::Storage;
 
-mod debug;
 mod distance;
 mod dot;
 mod iter;
 mod ops;
+mod storage;
 
-pub use self::iter::{IntoIter, Iter};
+pub use self::iter::*;
+pub use self::storage::*;
+
+/// A vector whose components are implicitly indexed `0..len`.
+///
+/// Every position in `0..len` is stored, making dense vectors suitable
+/// when most components are non-zero.
+pub trait DenseVector: Vector {
+    /// Returns the implicit index space as a half-open range `0..len`.
+    fn indices<Idx>(&self) -> Range<Idx>
+    where
+        Idx: Index;
+    /// Returns a slice of all vector components in index order.
+    fn values(&self) -> &[Self::Value];
+
+    /// A borrowing iterator over `self`.
+    fn iter<'a, Idx>(&'a self) -> impl Iterator<Item = (Idx, Self::Value)>
+    where
+        Idx: Index + 'a;
+
+    /// An owning iterator over `self`.
+    fn into_iter<Idx>(self) -> impl Iterator<Item = (Idx, Self::Value)>
+    where
+        Idx: Index;
+}
 
 /// A dense vector backed by storage `S`.
-pub struct DenseVector<T, S: Storage<T>> {
-    pub(crate) components: S,
+#[derive(Clone, Eq, PartialEq)]
+pub struct GenericDenseVec<T, S> {
+    pub(crate) storage: S,
     _phantom: PhantomData<T>,
 }
 
-impl<T, S: Storage<T>> Clone for DenseVector<T, S>
-where
-    S: Clone,
-{
-    fn clone(&self) -> Self {
+impl<T, S> From<S> for GenericDenseVec<T, S> {
+    fn from(storage: S) -> Self {
         Self {
-            components: self.components.clone(),
+            storage,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<T, S: Storage<T>> PartialEq for DenseVector<T, S>
-where
-    S: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.components == other.components
-    }
-}
-
 /// Heap-allocated dense vector.
-pub type HeapDenseVector<T> = DenseVector<T, Vec<T>>;
+#[cfg(feature = "alloc")]
+pub type DenseVec<T> = GenericDenseVec<T, DenseVecStorage<T>>;
 
 /// Stack-allocated dense vector with capacity `N`.
-pub type StackDenseVector<T, const N: usize> = DenseVector<T, ArrayVec<T, N>>;
+pub type DenseArrayVec<T, const N: usize> = GenericDenseVec<T, DenseArrayVecStorage<T, N>>;
 
-impl<T, S: Storage<T>> DenseVector<T, S> {
+impl<T, S> GenericDenseVec<T, S>
+where
+    S: DenseStorage<T>,
+{
     /// The number of components in `self`.
     #[inline]
     pub fn len(&self) -> usize {
-        self.components.as_ref().len()
+        self.storage.len()
     }
 
     /// `true` if `self.len() == 0`, otherwise `false`.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.components.as_ref().is_empty()
-    }
-
-    /// A borrowing iterator over `self`.
-    #[inline]
-    pub fn iter<'a>(&'a self) -> Iter<'a, T>
-    where
-        T: 'a,
-    {
-        Iter::new(self.components.as_ref())
-    }
-
-    /// The underlying components as a slice.
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.components.as_ref()
+        self.storage.is_empty()
     }
 }
 
-// MARK: From
+// MARK: TryFromIterator
 
-impl<T> From<Vec<T>> for DenseVector<T, Vec<T>> {
-    #[inline]
-    fn from(items: Vec<T>) -> Self {
-        Self {
-            components: items,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<T, const N: usize> From<[T; N]> for DenseVector<T, ArrayVec<T, N>> {
-    #[inline]
-    fn from(items: [T; N]) -> Self {
-        Self {
-            components: ArrayVec::from(items),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<T, const N: usize> From<ArrayVec<T, N>> for DenseVector<T, ArrayVec<T, N>> {
-    #[inline]
-    fn from(items: ArrayVec<T, N>) -> Self {
-        Self {
-            components: items,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-// MARK: FromIterator
-
-impl<T, S: Storage<T>> FromIterator<T> for DenseVector<T, S> {
-    #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self {
-            components: S::from_iter(iter.into_iter()),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-// MARK: IntoIterator
-
-impl<T, S: Storage<T>> IntoIterator for DenseVector<T, S> {
-    type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = IntoIter<S>;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter::new(self.components)
-    }
-}
-
-impl<'a, T, S: Storage<T>> IntoIterator for &'a DenseVector<T, S>
+impl<T, S> TryFromIterator<T> for GenericDenseVec<T, S>
 where
-    T: 'a + Copy,
+    S: DenseStorage<T> + TryFromIterator<T>,
 {
-    type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = Iter<'a, T>;
+    type Error = <S as TryFromIterator<T>>::Error;
 
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self.components.as_ref())
+    fn try_from_iter<I>(iter: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = T>,
+    {
+        S::try_from_iter(iter).map(Self::from)
+    }
+}
+
+// MARK: FromIteratorLossy
+
+impl<T, S> FromIteratorLossy<T> for GenericDenseVec<T, S>
+where
+    S: DenseStorage<T> + FromIteratorLossy<T>,
+{
+    fn from_iter_lossy<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        S::from_iter_lossy(iter).into()
+    }
+}
+
+// MARK: Debug
+
+impl<T, S> fmt::Debug for GenericDenseVec<T, S>
+where
+    T: fmt::Debug,
+    S: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.storage)
     }
 }
 
 // MARK: Vector trait
 
-impl<T, S: Storage<T>> Vector for DenseVector<T, S>
+impl<T, S: DenseStorage<T>> Vector for GenericDenseVec<T, S>
 where
     T: Copy,
 {
-    type Scalar = T;
+    type Value = T;
+
+    fn len(&self) -> usize {
+        self.storage.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.storage.is_empty()
+    }
+}
+
+impl<T, S> DenseVector for GenericDenseVec<T, S>
+where
+    T: Copy,
+    S: DenseStorage<T>,
+{
+    /// The implicit indices as a range.
+    fn indices<Idx>(&self) -> Range<Idx>
+    where
+        Idx: Index,
+    {
+        Idx::zero()..Idx::from_usize(self.storage.len())
+    }
+
+    /// The underlying components as a slice.
+    fn values(&self) -> &[Self::Value] {
+        self.storage.values()
+    }
+
+    fn iter<'a, Idx>(&'a self) -> impl Iterator<Item = (Idx, Self::Value)>
+    where
+        Idx: Index + 'a,
+        S: 'a,
+    {
+        self.storage.iter()
+    }
+
+    fn into_iter<Idx>(self) -> impl Iterator<Item = (Idx, Self::Value)>
+    where
+        Idx: Index,
+    {
+        self.storage.into_iter()
+    }
 }

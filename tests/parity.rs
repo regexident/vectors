@@ -1,33 +1,32 @@
 use num_traits::{MulAdd, Zero};
 use proptest::prelude::*;
-use vectors::dense::DenseVector;
-use vectors::sparse::SparseVector;
-use vectors::{Distance, Dot};
+
+use vectors::dense::{DenseVec, DenseVecStorage, DenseVector};
+use vectors::sparse::{SparseVec, SparseVector};
+use vectors::{Distance, Dot, TryFromIterator};
 
 /// Convert a sparse vector to a dense equivalent by zero-filling missing indices.
-fn to_dense<T: Copy + Zero>(
-    sparse: &SparseVector<usize, T, Vec<(usize, T)>>,
-) -> DenseVector<T, Vec<T>> {
-    let max_index = sparse.iter().map(|(i, _)| i).max().unwrap_or(0);
+fn to_dense<T: Copy + Zero>(sparse: &SparseVec<usize, T>) -> DenseVec<T> {
+    let max_index = sparse.indices().iter().copied().max().unwrap_or(0);
     let capacity = max_index + 1;
     let mut dense_components = vec![T::zero(); capacity];
-    for (idx, val) in sparse.iter() {
-        dense_components[idx] = val;
+    for i in 0..sparse.len() {
+        dense_components[sparse.indices()[i]] = sparse.values()[i];
     }
-    DenseVector::from(dense_components)
+    DenseVec::from(DenseVecStorage::from(dense_components))
 }
 
-fn pad_dense(v: &DenseVector<f64, Vec<f64>>, target_len: usize) -> DenseVector<f64, Vec<f64>> {
-    let mut components: Vec<f64> = v.iter().map(|(_, val)| val).collect();
+fn pad_dense(v: &DenseVec<f64>, target_len: usize) -> DenseVec<f64> {
+    let mut components: Vec<f64> = v.iter::<usize>().map(|(_, val)| val).collect();
     while components.len() < target_len {
         components.push(0.0);
     }
-    DenseVector::from(components)
+    DenseVec::from(DenseVecStorage::from(components))
 }
 
-fn assert_dense_eq(a: &DenseVector<f64, Vec<f64>>, b: &DenseVector<f64, Vec<f64>>, epsilon: f64) {
-    let a_vals: Vec<_> = a.iter().map(|(_, v)| v).collect();
-    let b_vals: Vec<_> = b.iter().map(|(_, v)| v).collect();
+fn assert_dense_eq(a: &DenseVec<f64>, b: &DenseVec<f64>, epsilon: f64) {
+    let a_vals: Vec<_> = a.iter::<usize>().map(|(_, v)| v).collect();
+    let b_vals: Vec<_> = b.iter::<usize>().map(|(_, v)| v).collect();
     assert_eq!(a_vals.len(), b_vals.len(), "length mismatch");
     for (i, (av, bv)) in a_vals.iter().zip(b_vals.iter()).enumerate() {
         assert!((av - bv).abs() < epsilon, "index {}: {} != {}", i, av, bv);
@@ -36,21 +35,16 @@ fn assert_dense_eq(a: &DenseVector<f64, Vec<f64>>, b: &DenseVector<f64, Vec<f64>
 
 // MARK: Strategies
 
-fn sparse_strategy() -> impl Strategy<Value = SparseVector<usize, f64, Vec<(usize, f64)>>> {
+fn sparse_strategy() -> impl Strategy<Value = SparseVec<usize, f64>> {
     proptest::collection::vec((0_usize..20, -10.0_f64..10.0), 0..15).prop_map(|mut pairs| {
         pairs.sort_by_key(|(k, _)| *k);
         pairs.dedup_by_key(|(k, _)| *k);
         pairs.retain(|(_, v)| !v.is_zero());
-        SparseVector::from_sorted_unchecked(pairs)
+        SparseVec::try_from_iter(pairs).unwrap()
     })
 }
 
-fn sparse_pair_strategy() -> impl Strategy<
-    Value = (
-        SparseVector<usize, f64, Vec<(usize, f64)>>,
-        SparseVector<usize, f64, Vec<(usize, f64)>>,
-    ),
-> {
+fn sparse_pair_strategy() -> impl Strategy<Value = (SparseVec<usize, f64>, SparseVec<usize, f64>)> {
     (sparse_strategy(), sparse_strategy())
 }
 
@@ -59,7 +53,7 @@ fn sparse_pair_strategy() -> impl Strategy<
 proptest! {
     #[test]
     fn sparse_add_equals_dense_add((a, b) in sparse_pair_strategy()) {
-        let sparse_result = a.clone() + &b;
+        let sparse_result = a.clone() + b.clone();
         let dense_a = to_dense(&a);
         let dense_b = to_dense(&b);
         let max_len = dense_a.len().max(dense_b.len());
@@ -73,7 +67,7 @@ proptest! {
 
     #[test]
     fn sparse_sub_equals_dense_sub((a, b) in sparse_pair_strategy()) {
-        let sparse_result = a.clone() - &b;
+        let sparse_result = a.clone() - b.clone();
         let dense_a = to_dense(&a);
         let dense_b = to_dense(&b);
         let max_len = dense_a.len().max(dense_b.len());
@@ -114,6 +108,20 @@ proptest! {
     }
 
     #[test]
+    fn dense_sparse_squared_distance_equals_dense_dense_squared_distance((a, b) in sparse_pair_strategy()) {
+        let dense_a = to_dense(&a);
+        let dense_b = to_dense(&b);
+        let max_len = dense_a.len().max(dense_b.len());
+        let dense_a = pad_dense(&dense_a, max_len);
+        let dense_b_converted = to_dense(&b);
+        let dense_b_padded = pad_dense(&dense_b_converted, max_len);
+        let dense_dist = dense_a.squared_distance(&dense_b_padded);
+        let cross_dist = dense_a.squared_distance(&b);
+        assert!((dense_dist - cross_dist).abs() < 1e-9,
+            "dense×sparse distance {} != dense×dense distance {}", cross_dist, dense_dist);
+    }
+
+    #[test]
     fn sparse_squared_distance_equals_dense_squared_distance((a, b) in sparse_pair_strategy()) {
         let sparse_result = a.squared_distance(&b);
         let dense_a = to_dense(&a);
@@ -135,20 +143,20 @@ mod edge_cases {
 
     #[test]
     fn empty_sparse_vectors() {
-        let a: SparseVector<usize, f64, _> = SparseVector::try_from(vec![]).unwrap();
-        let b: SparseVector<usize, f64, _> = SparseVector::try_from(vec![]).unwrap();
+        let a: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![]).unwrap();
+        let b: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert_eq!(dot, 0.0);
         assert_eq!(dist, 0.0);
-        let sum = a + &b;
+        let sum = a + b;
         assert!(sum.is_empty());
     }
 
     #[test]
     fn single_element_vectors() {
-        let a = SparseVector::try_from(vec![(5, 3.0_f64)]).unwrap();
-        let b = SparseVector::try_from(vec![(5, 4.0_f64)]).unwrap();
+        let a: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(5, 3.0_f64)]).unwrap();
+        let b: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(5, 4.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 12.0).abs() < 1e-9);
@@ -157,8 +165,8 @@ mod edge_cases {
 
     #[test]
     fn single_element_different_keys() {
-        let a = SparseVector::try_from(vec![(1, 3.0_f64)]).unwrap();
-        let b = SparseVector::try_from(vec![(5, 4.0_f64)]).unwrap();
+        let a: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(1, 3.0_f64)]).unwrap();
+        let b: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(5, 4.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 0.0).abs() < 1e-9);
@@ -167,8 +175,10 @@ mod edge_cases {
 
     #[test]
     fn large_indices() {
-        let a = SparseVector::try_from(vec![(0, 1.0_f64), (1_000_000, 2.0_f64)]).unwrap();
-        let b = SparseVector::try_from(vec![(1_000_000, 3.0_f64)]).unwrap();
+        let a: SparseVec<usize, f64> =
+            SparseVec::try_from_iter(vec![(0, 1.0_f64), (1_000_000, 2.0_f64)]).unwrap();
+        let b: SparseVec<usize, f64> =
+            SparseVec::try_from_iter(vec![(1_000_000, 3.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 6.0).abs() < 1e-9);
@@ -176,15 +186,15 @@ mod edge_cases {
     }
 
     #[test]
-    fn zero_dimensional_after_canonicalization() {
-        let a = SparseVector::from_unsorted(vec![(0, 0.0_f64)]);
-        assert!(a.is_empty());
+    fn zero_valued_entries_are_filtered() {
+        let a: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(0, 0.0_f64)]).unwrap();
+        assert_eq!(a.len(), 0);
     }
 
     #[test]
     fn nan_propagation_f64() {
-        let a = SparseVector::try_from(vec![(0, f64::NAN)]).unwrap();
-        let b = SparseVector::try_from(vec![(0, 1.0_f64)]).unwrap();
+        let a: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(0, f64::NAN)]).unwrap();
+        let b: SparseVec<usize, f64> = SparseVec::try_from_iter(vec![(0, 1.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         assert!(dot.is_nan());
         let dist: f64 = a.squared_distance(&b);

@@ -1,81 +1,73 @@
-use std::ops::{Add, Mul};
+use std::ops::Mul;
 
 use num_traits::Zero;
 
-use crate::dense::DenseVector;
-use crate::sparse::join::inner_join;
-use crate::storage::Storage;
+use crate::{
+    Dot, Index, Value,
+    dense::{DenseStorage, DenseVector, GenericDenseVec},
+};
 
-use super::SparseVector;
-use crate::Dot;
+use super::{GenericSparseVec, SparseStorage, SparseVector};
 
-impl<Idx, T, S> Dot for SparseVector<Idx, T, S>
+impl<Idx, T, S> Dot for GenericSparseVec<Idx, T, S>
 where
     Idx: Ord + Copy,
-    T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
-    S: Storage<(Idx, T)>,
+    T: Copy + Mul<Output = T> + Zero,
+    S: SparseStorage<Idx, T>,
 {
     type Output = T;
 
-    fn dot(&self, rhs: &Self) -> <Self as Dot>::Output {
-        inner_join(self.as_slice(), rhs.as_slice())
-            .fold(T::zero(), |sum, (_, (lhs, rhs))| sum + (lhs * rhs))
-    }
-}
+    fn dot(&self, rhs: &Self) -> Self::Output {
+        let (left_i, left_v) = (self.storage.indices(), self.storage.values());
+        let (right_i, right_v) = (rhs.storage.indices(), rhs.storage.values());
 
-impl<Idx, T, S, S2> Dot<DenseVector<T, S2>> for SparseVector<Idx, T, S>
-where
-    Idx: Ord + Copy + Into<usize>,
-    T: Copy + Add<T, Output = T> + Mul<T, Output = T> + Zero,
-    S: Storage<(Idx, T)>,
-    S2: Storage<T>,
-{
-    type Output = T;
+        let mut result = T::zero();
+        let mut left_pos = 0;
+        let mut right_pos = 0;
 
-    fn dot(&self, rhs: &DenseVector<T, S2>) -> <Self as Dot<DenseVector<T, S2>>>::Output {
-        let dense_slice = rhs.as_slice();
-        self.as_slice().iter().fold(T::zero(), |sum, (idx, val)| {
-            let idx: usize = (*idx).into();
-            if idx < dense_slice.len() {
-                sum + (*val * dense_slice[idx])
+        while left_pos < left_i.len() && right_pos < right_i.len() {
+            let cmp = left_i[left_pos].cmp(&right_i[right_pos]);
+            if cmp == std::cmp::Ordering::Less {
+                left_pos += 1;
+            } else if cmp == std::cmp::Ordering::Greater {
+                right_pos += 1;
             } else {
-                sum
+                result = result + left_v[left_pos] * right_v[right_pos];
+                left_pos += 1;
+                right_pos += 1;
             }
-        })
+        }
+
+        result
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+impl<Idx, T, S, S2> Dot<GenericDenseVec<T, S2>> for GenericSparseVec<Idx, T, S>
+where
+    Idx: Index,
+    T: Value,
+    S: SparseStorage<Idx, T>,
+    S2: DenseStorage<T>,
+{
+    type Output = T;
 
-    use crate::dense::DenseVector;
-    use approx::assert_relative_eq;
+    fn dot(&self, rhs: &GenericDenseVec<T, S2>) -> Self::Output {
+        let (sparse_indices, sparse_values): (&[Idx], &[T]) = (self.indices(), self.values());
+        let dense_values: &[T] = rhs.values();
 
-    #[test]
-    fn dot() {
-        let subject =
-            SparseVector::try_from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0), (5, 4.0)]).unwrap();
-        let other =
-            SparseVector::try_from(vec![(1, 0.1), (2, 0.2), (3, 0.3), (5, 0.4), (6, 0.5)]).unwrap();
-        assert_relative_eq!(subject.dot(&other), 1.85, epsilon = 0.001);
-    }
+        let mut sum = T::zero();
 
-    #[test]
-    fn dot_dense() {
-        let sparse = SparseVector::try_from(vec![
-            (0usize, 0.2_f64),
-            (1usize, 0.5),
-            (2usize, 1.0),
-            (4usize, 2.0),
-            (5usize, 4.0),
-        ])
-        .unwrap();
-        let dense: DenseVector<_, Vec<_>> =
-            DenseVector::from(vec![0.0_f64, 0.1, 0.2, 0.3, 0.0, 0.4, 0.5]);
-        let dot: f64 = sparse.dot(&dense);
-        let expected: f64 =
-            0.2 * 0.0 + 0.5 * 0.1 + 1.0 * 0.2 + 0.0 * 0.3 + 2.0 * 0.0 + 4.0 * 0.4 + 0.0 * 0.5;
-        assert_relative_eq!(dot, expected, epsilon = 1e-9);
+        let mut sparse_pos = 0;
+        let mut dense_pos = Idx::zero();
+
+        for dense_val in dense_values.iter() {
+            if sparse_pos < sparse_indices.len() && sparse_indices[sparse_pos] == dense_pos {
+                sum = sum + sparse_values[sparse_pos] * *dense_val;
+                sparse_pos += 1;
+            }
+            dense_pos += Idx::one();
+        }
+
+        sum
     }
 }

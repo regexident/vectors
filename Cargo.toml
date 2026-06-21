@@ -26,5 +26,6 @@ proptest = "1"
 
 [features]
 default = ["std"]
-std = ["num-traits/std"]
+std = ["num-traits/std", "alloc"]
+alloc = []
 libm = ["num-traits/libm"]

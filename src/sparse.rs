@@ -1,339 +1,196 @@
 //! Sparse vector representations.
 //!
 //! Sparse vectors store only non-zero `(index, value)` pairs and enforce
-//! sorted, unique keys. The generic `SparseVector<Idx, T, S>` is parameterized
-//! by the value type `T`, the index type `Idx`, and the backing storage `S`.
+//! sorted, unique keys. The storage uses a SoA (Struct-of-Arrays) layout:
+//! `indices: SI` and `values: SV`. The generic `SparseVector<Idx, T, S>`
+//! is parameterized by the index type `Idx`, the value type `T`, and the
+//! backing storages `SI` (indices) and `SV` (values).
 //!
 //! ## Type aliases
 //!
-//! | Alias | Storage | Description |
-//! |-------|---------|-------------|
-//! | `HeapSparseVector<Idx, T>` | `Vec<(Idx, T)>` | Heap-allocated |
-//! | `StackSparseVector<Idx, T, const N>` | `ArrayVec<(Idx, T), N>` | Stack-allocated, fixed capacity |
+//! | Alias | Index storage | Value storage | Description |
+//! |-------|---------------|---------------|-------------|
+//! | `SparseVec<Idx, T>` | `Vec<Idx>` | `Vec<T>` | Heap-allocated |
+//! | `SparseArrayVec<Idx, T, const N>` | `ArrayVec<Idx, N>` | `ArrayVec<T, N>` | Stack-allocated, fixed capacity |
 
 use std::fmt;
-use std::iter::FromIterator;
 use std::marker::PhantomData;
 
-use arrayvec::ArrayVec;
-use num_traits::Zero;
-
+use crate::FromIteratorLossy;
+use crate::Index;
+use crate::TryFromIterator;
 use crate::Vector;
-use crate::storage::Storage;
 
-pub use self::iter::{IntoIter, Iter};
-pub use self::join::{Join, inner_join, outer_join};
+/// Utility functions for sparse vector construction (e.g., splitting
+/// sorted pairs into SoA storage).
+pub mod util;
 
-mod iter;
-mod join;
-
-mod debug;
 mod distance;
 mod dot;
+mod iter;
+mod join;
 mod ops;
+mod storage;
 
-/// Errors that can occur when constructing a sparse vector from unsorted input.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SparseVectorError<Idx> {
-    /// Indexes are not in strictly increasing order; the value at this index was out of order.
-    UnsortedIndexes {
-        /// The index in the input where the unsorted entry was found.
-        index: Idx,
-    },
-    /// The same index appears more than once; this is the second occurrence.
-    DuplicateIndexes {
-        /// The index that appears more than once.
-        index: Idx,
-    },
-    /// The value for this index is zero (only produced on the strict-validate path).
-    ZeroValue {
-        /// The index whose value is zero.
-        index: Idx,
-    },
+pub use self::iter::*;
+pub use self::join::*;
+pub use self::storage::*;
+
+/// A vector whose components are stored as explicit `(index, value)`
+/// pairs, sorted by index.
+///
+/// Unlike [`DenseVector`](crate::dense::DenseVector), sparse vectors
+/// only store non-zero entries. The index type is generic, allowing
+/// compact representations (e.g. `u32` for low-dimensional spaces).
+pub trait SparseVector: Vector {
+    /// The unsigned integer type used for component indices.
+    type Index: Index;
+
+    /// A slice of all stored indices, in increasing order.
+    fn indices(&self) -> &[Self::Index];
+    /// A slice of all stored values, parallel to [`indices`](SparseVector::indices).
+    fn values(&self) -> &[Self::Value];
+
+    /// A borrowing iterator over stored `(index, value)` pairs.
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (Self::Index, Self::Value)>
+    where
+        Self::Index: 'a,
+        Self: 'a;
+
+    /// An owning iterator over stored `(index, value)` pairs.
+    fn into_iter(self) -> impl Iterator<Item = (Self::Index, Self::Value)>;
 }
 
-impl<Idx: fmt::Display> fmt::Display for SparseVectorError<Idx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SparseVectorError::UnsortedIndexes { index: at } => {
-                write!(f, "unsorted sparse-vector keys at index {}", at)
-            }
-            SparseVectorError::DuplicateIndexes { index } => {
-                write!(f, "duplicate sparse-vector key {}", index)
-            }
-            SparseVectorError::ZeroValue { index: at } => {
-                write!(f, "zero value at sparse-vector key {}", at)
-            }
-        }
-    }
-}
-
-/// A sparse vector backed by storage `S`, using index type `Idx`.
-pub struct SparseVector<Idx, T, S: Storage<(Idx, T)>> {
-    pub(crate) components: S,
+/// A sparse vector backed by SoA storage: `indices: SI` and `values: SV`.
+#[derive(Clone, Eq, PartialEq)]
+pub struct GenericSparseVec<Idx, T, S> {
+    pub(crate) storage: S,
     _phantom: PhantomData<(Idx, T)>,
 }
 
-impl<Idx, T, S: Storage<(Idx, T)>> Clone for SparseVector<Idx, T, S>
-where
-    S: Clone,
-{
-    fn clone(&self) -> Self {
+impl<Idx, T, S> From<S> for GenericSparseVec<Idx, T, S> {
+    fn from(storage: S) -> Self {
         Self {
-            components: self.components.clone(),
+            storage,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<Idx, T, S: Storage<(Idx, T)>> PartialEq for SparseVector<Idx, T, S>
-where
-    S: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.components == other.components
-    }
-}
-
 /// Heap-allocated sparse vector.
-pub type HeapSparseVector<Idx, T> = SparseVector<Idx, T, Vec<(Idx, T)>>;
+#[cfg(feature = "alloc")]
+pub type SparseVec<Idx, T> = GenericSparseVec<Idx, T, SparseVecStorage<Idx, T>>;
 
 /// Stack-allocated sparse vector with capacity `N`.
-pub type StackSparseVector<Idx, T, const N: usize> = SparseVector<Idx, T, ArrayVec<(Idx, T), N>>;
+pub type SparseArrayVec<Idx, T, const N: usize> =
+    GenericSparseVec<Idx, T, SparseArrayVecStorage<Idx, T, N>>;
 
-impl<Idx, T, S: Storage<(Idx, T)>> SparseVector<Idx, T, S> {
+impl<Idx, T, S> GenericSparseVec<Idx, T, S>
+where
+    S: SparseStorage<Idx, T>,
+{
     /// The number of components in `self`.
     #[inline]
     pub fn len(&self) -> usize {
-        self.components.len()
+        self.storage.len()
     }
 
     /// `true` if `self.len() == 0`, otherwise `false`.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.components.is_empty()
+        self.storage.is_empty()
     }
+}
 
-    /// A borrowing iterator over `self`.
-    #[inline]
-    pub fn iter<'a>(&'a self) -> Iter<'a, Idx, T>
+// MARK: TryFromIterator
+
+impl<Idx, T, S> TryFromIterator<(Idx, T)> for GenericSparseVec<Idx, T, S>
+where
+    S: SparseStorage<Idx, T> + TryFromIterator<(Idx, T)>,
+{
+    type Error = <S as TryFromIterator<(Idx, T)>>::Error;
+
+    fn try_from_iter<I>(iter: I) -> Result<Self, Self::Error>
     where
-        Idx: 'a,
-        T: 'a,
+        I: IntoIterator<Item = (Idx, T)>,
     {
-        Iter::new(self.components.as_slice())
-    }
-
-    /// The underlying components as a slice of `(index, value)` pairs.
-    #[inline]
-    pub fn as_slice(&self) -> &[(Idx, T)] {
-        self.components.as_slice()
+        S::try_from_iter(iter).map(Self::from)
     }
 }
 
-// MARK: Constructors
+// MARK: FromIteratorLossy
 
-impl<Idx, T> SparseVector<Idx, T, Vec<(Idx, T)>> {
-    /// Creates a sparse vector from a sorted, deduplicated, non-zero list of entries without validation.
-    #[inline]
-    pub fn from_sorted_unchecked(items: Vec<(Idx, T)>) -> Self {
-        Self {
-            components: items,
-            _phantom: PhantomData,
-        }
-    }
-
-    /// Creates a sparse vector from an unsorted, possibly duplicated list of entries.
-    #[inline]
-    pub fn from_unsorted(items: Vec<(Idx, T)>) -> Self
+impl<Idx, T, S> FromIteratorLossy<(Idx, T)> for GenericSparseVec<Idx, T, S>
+where
+    S: SparseStorage<Idx, T> + FromIteratorLossy<(Idx, T)>,
+{
+    fn from_iter_lossy<I>(iter: I) -> Self
     where
-        Idx: Ord + Copy,
-        T: Copy + Zero + PartialEq,
+        I: IntoIterator<Item = (Idx, T)>,
     {
-        let mut components = items;
-        let new_len = canonicalize_entries(components.as_mut_slice(), true);
-        components.truncate(new_len);
-        Self {
-            components,
-            _phantom: PhantomData,
-        }
-    }
-
-    /// Normalizes `self` in-place.
-    #[inline]
-    pub fn canonicalize(&mut self)
-    where
-        Idx: Ord + Copy,
-        T: Copy + Zero + PartialEq,
-    {
-        let new_len = canonicalize_entries(self.components.as_mut(), true);
-        Storage::truncate(&mut self.components, new_len);
+        S::from_iter_lossy(iter).into()
     }
 }
 
-// MARK: From
+// MARK: Debug
 
-impl<Idx, T> From<Vec<(Idx, T)>> for SparseVector<Idx, T, Vec<(Idx, T)>>
+impl<Idx, T, S> fmt::Debug for GenericSparseVec<Idx, T, S>
 where
-    Idx: Ord + Copy,
-    T: Zero + PartialEq + Copy,
+    Idx: fmt::Debug,
+    T: fmt::Debug,
+    S: fmt::Debug,
 {
-    #[inline]
-    fn from(mut items: Vec<(Idx, T)>) -> Self {
-        canonicalize_entries(items.as_mut_slice(), true);
-
-        Self {
-            components: items,
-            _phantom: PhantomData,
-        }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.storage)
     }
 }
 
-impl<Idx, T, const N: usize> From<ArrayVec<(Idx, T), N>>
-    for SparseVector<Idx, T, ArrayVec<(Idx, T), N>>
-where
-    Idx: Ord + Copy,
-    T: Zero + PartialEq + Copy,
-{
-    #[inline]
-    fn from(mut items: ArrayVec<(Idx, T), N>) -> Self {
-        canonicalize_entries(items.as_mut_slice(), true);
+// MARK: Vector
 
-        Self {
-            components: ArrayVec::from(items),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-// MARK: FromIterator
-
-impl<Idx, T, S: Storage<(Idx, T)>> FromIterator<(Idx, T)> for SparseVector<Idx, T, S>
-where
-    Idx: Ord + Copy,
-    T: Zero + PartialEq + Copy,
-{
-    #[inline]
-    fn from_iter<I: IntoIterator<Item = (Idx, T)>>(iter: I) -> Self {
-        let mut components = S::from_iter(iter.into_iter());
-
-        let new_len = canonicalize_entries(components.as_mut_slice(), true);
-        Storage::truncate(&mut components, new_len);
-
-        Self {
-            components,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-// MARK: IntoIterator
-
-impl<Idx, T, S: Storage<(Idx, T)>> IntoIterator for SparseVector<Idx, T, S> {
-    type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = IntoIter<S>;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter::new(self.components)
-    }
-}
-
-impl<'a, Idx, T, S> IntoIterator for &'a SparseVector<Idx, T, S>
-where
-    Idx: 'a + Copy,
-    T: 'a + Copy,
-    S: Storage<(Idx, T)>,
-{
-    type Item = <Self::IntoIter as Iterator>::Item;
-    type IntoIter = Iter<'a, Idx, T>;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self.components.as_slice())
-    }
-}
-
-// MARK: Vector trait
-
-impl<Idx, T, S: Storage<(Idx, T)>> Vector for SparseVector<Idx, T, S>
+impl<Idx, T, S: SparseStorage<Idx, T>> Vector for GenericSparseVec<Idx, T, S>
 where
     T: Copy,
 {
-    type Scalar = T;
+    type Value = T;
+
+    fn len(&self) -> usize {
+        self.storage.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.storage.is_empty()
+    }
 }
 
-// MARK: Helper functions
+// MARK: SparseVector
 
-/// Validates that entries have strictly increasing keys and no zero values.
-#[allow(dead_code)]
-fn validate_entries<Idx, T>(
-    entries: &[(Idx, T)],
-    check_zeros: bool,
-) -> Result<(), SparseVectorError<Idx>>
+impl<Idx, T, S> SparseVector for GenericSparseVec<Idx, T, S>
 where
-    Idx: Ord + Copy,
-    T: Zero + PartialEq,
+    Idx: Index,
+    T: Copy,
+    S: SparseStorage<Idx, T>,
 {
-    if entries.is_empty() {
-        return Ok(());
+    type Index = Idx;
+
+    /// The underlying indices as a slice.
+    fn indices(&self) -> &[Self::Index] {
+        self.storage.indices()
     }
 
-    let mut prev_key = entries[0].0;
-
-    if check_zeros && entries[0].1.is_zero() {
-        return Err(SparseVectorError::ZeroValue {
-            index: entries[0].0,
-        });
+    /// The underlying values as a slice.
+    fn values(&self) -> &[Self::Value] {
+        self.storage.values()
     }
 
-    for (_i, (key, val)) in entries.iter().enumerate().skip(1) {
-        if *key <= prev_key {
-            if *key == prev_key {
-                return Err(SparseVectorError::DuplicateIndexes { index: *key });
-            }
-
-            return Err(SparseVectorError::UnsortedIndexes { index: *key });
-        }
-
-        if check_zeros && val.is_zero() {
-            return Err(SparseVectorError::ZeroValue { index: *key });
-        }
-
-        prev_key = *key;
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (Self::Index, Self::Value)>
+    where
+        Self::Index: 'a,
+        Self: 'a,
+    {
+        self.storage.iter()
     }
 
-    Ok(())
-}
-
-/// Sorts entries by key, deduplicates (keeping the last value), drops zeros (optional).
-/// Returns the new length.
-fn canonicalize_entries<Idx, T>(entries: &mut [(Idx, T)], drop_zeros: bool) -> usize
-where
-    Idx: Ord + Copy,
-    T: Zero + PartialEq + Copy,
-{
-    if !entries.is_sorted_by(|lhs, rhs| lhs.0 < rhs.0) {
-        entries.sort_by_key(|(k, _)| *k);
+    fn into_iter(self) -> impl Iterator<Item = (Self::Index, Self::Value)> {
+        self.storage.into_iter()
     }
-
-    let mut write = 0;
-
-    for read in 0..entries.len() {
-        if read + 1 < entries.len() && entries[read].0 == entries[read + 1].0 {
-            continue;
-        }
-
-        if drop_zeros && entries[read].1.is_zero() {
-            continue;
-        }
-
-        if write != read {
-            entries[write] = entries[read].clone();
-        }
-
-        write += 1;
-    }
-
-    write
 }
