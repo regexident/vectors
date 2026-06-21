@@ -9,8 +9,20 @@ fn readme_basic_example() {
     let _dot = dense_1.dot(&dense_2);
     let _dist = dense_1.distance(&dense_2);
 
-    let sparse_1 = SparseVector::from(vec![(0, 0.2), (2, 0.2), (4, 0.3), (6, 0.4)]);
-    let sparse_2 = SparseVector::from(vec![(0, 0.2), (3, 0.4), (5, 0.2), (6, 0.6)]);
+    let sparse_1 = SparseVector::try_from(vec![
+        (0usize, 0.2),
+        (2usize, 0.2),
+        (4usize, 0.3),
+        (6usize, 0.4),
+    ])
+    .unwrap();
+    let sparse_2 = SparseVector::try_from(vec![
+        (0usize, 0.2),
+        (3usize, 0.4),
+        (5usize, 0.2),
+        (6usize, 0.6),
+    ])
+    .unwrap();
     let _dot = sparse_1.dot(&sparse_2);
     let _dist = sparse_1.distance(&sparse_2);
 
@@ -19,9 +31,9 @@ fn readme_basic_example() {
 
 #[test]
 fn readme_sparse_construction() {
-    let _v = SparseVector::from(vec![(0, 1.0), (2, 3.0), (5, 4.0)]);
-    let _v = SparseVector::from_sorted_unchecked(vec![(0, 1.0), (2, 3.0)]);
-    let v = SparseVector::try_from_unsorted(vec![(5, 4.0), (0, 1.0), (1, 0.0)]);
+    let _v = SparseVector::try_from(vec![(0usize, 1.0), (2usize, 3.0), (5usize, 4.0)]).unwrap();
+    let _v = SparseVector::from_sorted_unchecked(vec![(0usize, 1.0), (2usize, 3.0)]);
+    let v = SparseVector::from_unsorted(vec![(5usize, 4.0), (0usize, 1.0), (1usize, 0.0)]);
     assert_eq!(v.iter().collect::<Vec<_>>(), vec![(0, 1.0), (5, 4.0)]);
 }
 

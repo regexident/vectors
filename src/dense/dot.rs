@@ -27,19 +27,24 @@ where
     }
 }
 
-impl<T, S, S2> Dot<SparseVector<T, S2>> for DenseVector<T, S>
+impl<Idx, T, S, S2> Dot<SparseVector<Idx, T, S2>> for DenseVector<T, S>
 where
+    Idx: Into<usize> + Copy,
     T: Copy + Num + Zero,
     S: Storage<T>,
-    S2: Storage<(usize, T)>,
+    S2: Storage<(Idx, T)>,
 {
     type Output = T;
 
-    fn dot(&self, rhs: &SparseVector<T, S2>) -> <Self as Dot<SparseVector<T, S2>>>::Output {
+    fn dot(
+        &self,
+        rhs: &SparseVector<Idx, T, S2>,
+    ) -> <Self as Dot<SparseVector<Idx, T, S2>>>::Output {
         let dense_slice = self.components.as_ref();
         rhs.as_slice().iter().fold(T::zero(), |sum, (idx, val)| {
-            if *idx < dense_slice.len() {
-                sum + (dense_slice[*idx] * (*val))
+            let idx: usize = (*idx).into();
+            if idx < dense_slice.len() {
+                sum + (dense_slice[idx] * (*val))
             } else {
                 sum
             }
@@ -73,13 +78,14 @@ mod tests {
     #[test]
     fn dot_sparse() {
         let dense: DV = DenseVector::from(vec![0.0_f64, 0.5, 1.0, 2.0, 4.0, 0.0, 0.0]);
-        let sparse = crate::sparse::SparseVector::from(vec![
-            (1, 0.1_f64),
-            (2, 0.2),
-            (3, 0.3),
-            (5, 0.4),
-            (6, 0.5),
-        ]);
+        let sparse = crate::sparse::SparseVector::try_from(vec![
+            (1usize, 0.1_f64),
+            (2usize, 0.2),
+            (3usize, 0.3),
+            (5usize, 0.4),
+            (6usize, 0.5),
+        ])
+        .unwrap();
         let dot: f64 = dense.dot(&sparse);
         let expected: f64 =
             0.0 * 0.0 + 0.5 * 0.1 + 1.0 * 0.2 + 2.0 * 0.3 + 4.0 * 0.0 + 0.0 * 0.4 + 0.0 * 0.5;

@@ -3,7 +3,12 @@ use std::fmt;
 use super::SparseVector;
 use crate::storage::Storage;
 
-impl<T: Copy + fmt::Debug, S: Storage<(usize, T)>> fmt::Debug for SparseVector<T, S> {
+impl<T, Idx, S> fmt::Debug for SparseVector<Idx, T, S>
+where
+    Idx: fmt::Display,
+    T: Copy + fmt::Debug,
+    S: Storage<(Idx, T)>,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(f, "[");
         for (fmt_idx, (index, value)) in self.as_slice().iter().enumerate() {
@@ -24,7 +29,7 @@ mod test {
 
     #[test]
     fn debug() {
-        let vector = SparseVector::from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0)]);
+        let vector = SparseVector::try_from(vec![(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0)]).unwrap();
         assert_eq!(
             format!("{:?}", vector),
             "[(0, 0.2), (1, 0.5), (2, 1.0), (4, 2.0)]"

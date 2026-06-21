@@ -3,17 +3,40 @@ use arrayvec::ArrayVec;
 /// Backing storage for vector components.
 ///
 /// Implemented by `Vec<T>` and `ArrayVec<T, N>`.
-pub trait Storage<T>: IntoIterator<Item = T> + AsRef<[T]> + AsMut<[T]> + Extend<T> {
-    /// Creates a new storage from an iterator.
-    fn from_iter_in_place(iter: impl Iterator<Item = T>) -> Self;
+pub trait Storage<T>:
+    IntoIterator<Item = T> + AsRef<[T]> + AsMut<[T]> + FromIterator<T> + Extend<T>
+{
+    /// Returns the number of elements in the storage.
+    fn len(&self) -> usize;
+
+    /// Returns true if the storage has a length of 0.
+    fn is_empty(&self) -> bool;
+
+    /// Returns a slice containing the entire storage.
+    fn as_slice(&self) -> &[T];
+
+    /// Returns a mutable slice containing the entire storage.
+    fn as_mut_slice(&mut self) -> &mut [T];
 
     /// Truncates the storage to `len` elements.
     fn truncate(&mut self, len: usize);
 }
 
 impl<T> Storage<T> for Vec<T> {
-    fn from_iter_in_place(iter: impl Iterator<Item = T>) -> Self {
-        iter.collect()
+    fn len(&self) -> usize {
+        Vec::len(&self)
+    }
+
+    fn is_empty(&self) -> bool {
+        Vec::is_empty(&self)
+    }
+
+    fn as_slice(&self) -> &[T] {
+        Vec::as_slice(self)
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        Vec::as_mut_slice(self)
     }
 
     fn truncate(&mut self, len: usize) {
@@ -22,11 +45,20 @@ impl<T> Storage<T> for Vec<T> {
 }
 
 impl<T, const N: usize> Storage<T> for ArrayVec<T, N> {
-    fn from_iter_in_place(iter: impl Iterator<Item = T>) -> Self {
-        let mut av = ArrayVec::new();
-        av.extend(iter);
+    fn len(&self) -> usize {
+        ArrayVec::len(&self)
+    }
 
-        av
+    fn is_empty(&self) -> bool {
+        ArrayVec::is_empty(&self)
+    }
+
+    fn as_slice(&self) -> &[T] {
+        ArrayVec::as_slice(self)
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        ArrayVec::as_mut_slice(self)
     }
 
     fn truncate(&mut self, len: usize) {

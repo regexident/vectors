@@ -32,18 +32,26 @@ where
     }
 }
 
-impl<T, S, S2> Distance<SparseVector<T, S2>> for DenseVector<T, S>
+impl<Idx, T, S, S2> Distance<SparseVector<Idx, T, S2>> for DenseVector<T, S>
 where
+    Idx: Ord + Copy + Into<usize>,
     T: Copy + Signed + Zero + Sub<T, Output = T> + Mul<T, Output = T>,
     S: Storage<T>,
-    S2: Storage<(usize, T)>,
+    S2: Storage<(Idx, T)>,
 {
     type Output = T;
 
-    fn squared_distance(&self, rhs: &SparseVector<T, S2>) -> <Self as Distance<SparseVector<T, S2>>>::Output {
+    fn squared_distance(
+        &self,
+        rhs: &SparseVector<Idx, T, S2>,
+    ) -> <Self as Distance<SparseVector<Idx, T, S2>>>::Output {
         let dense_slice = self.components.as_ref();
         let sparse_slice = rhs.as_slice();
-        let max_rhs_idx = sparse_slice.iter().map(|(i, _)| *i).max().unwrap_or(0);
+        let max_rhs_idx: usize = sparse_slice
+            .iter()
+            .map(|(i, _)| (*i).into())
+            .max()
+            .unwrap_or(0);
         let capacity = dense_slice.len().max(max_rhs_idx + 1);
 
         let mut sum = T::zero();
@@ -57,7 +65,7 @@ where
 
             let r_val = sparse_slice
                 .iter()
-                .find(|(i, _)| *i == idx)
+                .find(|(i, _)| (*i).into() == idx)
                 .map(|(_, v)| *v)
                 .unwrap_or(T::zero());
 

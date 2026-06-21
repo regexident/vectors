@@ -125,7 +125,7 @@ impl<T, S: Storage<T>> FromIterator<T> for DenseVector<T, S> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
-            components: S::from_iter_in_place(iter.into_iter()),
+            components: S::from_iter(iter.into_iter()),
             _phantom: PhantomData,
         }
     }

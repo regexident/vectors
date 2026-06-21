@@ -23,9 +23,9 @@ fn main() {
 
     println!("Dense dot: {:?}, distance: {:?}", dot, dist);
 
-    // Sparse vectors (heap-allocated)
-    let sparse_1 = SparseVector::from(vec![(0, 0.2), (2, 0.2), (4, 0.3), (6, 0.4)]);
-    let sparse_2 = SparseVector::from(vec![(0, 0.2), (3, 0.4), (5, 0.2), (6, 0.6)]);
+    // Sparse vectors (heap-allocated, Idx = usize via type inference)
+    let sparse_1 = SparseVector::try_from(vec![(0usize, 0.2), (2usize, 0.2), (4usize, 0.3), (6usize, 0.4)]).unwrap();
+    let sparse_2 = SparseVector::try_from(vec![(0usize, 0.2), (3usize, 0.4), (5usize, 0.2), (6usize, 0.6)]).unwrap();
 
     let dot = sparse_1.dot(&sparse_2);
     let dist = sparse_1.distance(&sparse_2);
@@ -45,15 +45,29 @@ Sparse vectors enforce sorted, unique, non-zero invariants:
 ```rust
 use vectors::sparse::SparseVector;
 
-// Panics on invalid input (unsorted, duplicates, or zeros)
-let v = SparseVector::from(vec![(0, 1.0), (2, 3.0), (5, 4.0)]);
+// Returns `Err` on invalid input (unsorted, duplicates, or zeros)
+let v = SparseVector::try_from(vec![(0usize, 1.0), (2usize, 3.0), (5usize, 4.0)]).unwrap();
 
 // Trusted fast path (caller guarantees sorted, unique, non-zero)
-let v = SparseVector::from_sorted_unchecked(vec![(0, 1.0), (2, 3.0)]);
+let v = SparseVector::from_sorted_unchecked(vec![(0usize, 1.0), (2usize, 3.0)]);
 
 // Automatically sorts, deduplicates, and drops zeros
-let v = SparseVector::try_from_unsorted(vec![(5, 4.0), (0, 1.0), (1, 0.0)]);
-assert_eq!(v.iter().collect::<Vec<_>>(), vec![(0, 1.0), (5, 4.0)]);
+let v = SparseVector::from_unsorted(vec![(5usize, 4.0), (0usize, 1.0), (1usize, 0.0)]);
+assert_eq!(v.iter().collect::<Vec<_>>(), vec![(0usize, 1.0), (5usize, 4.0)]);
+```
+
+## Custom index types
+
+`SparseVector` is generic over the index type `Idx`. Any `Ord + Copy` type works:
+
+```rust
+use vectors::sparse::{SparseVector, HeapSparseVector};
+
+// Using u32 indices
+let v: SparseVector<u32, f64, Vec<(u32, f64)>> = SparseVector::try_from(vec![(0u32, 1.0), (2u32, 3.0)]).unwrap();
+
+// Using the HeapSparseVector type alias (Idx first)
+let v: HeapSparseVector<usize, f64> = SparseVector::from_sorted_unchecked(vec![(0usize, 1.0), (2usize, 3.0)]);
 ```
 
 ## Stack-allocated variants
@@ -62,8 +76,12 @@ For fixed-size vectors, use the stack variants:
 
 ```rust
 use vectors::dense::StackDenseVector;
+use vectors::sparse::StackSparseVector;
 
 let v: StackDenseVector<f64, 4> = StackDenseVector::from([1.0, 2.0, 3.0, 4.0]);
+
+// Stack-allocated sparse vector with capacity 6
+let v: StackSparseVector<usize, f64, 6> = StackSparseVector::from_iter(vec![(0usize, 1.0), (2usize, 3.0)]);
 ```
 
 ## Feature flags

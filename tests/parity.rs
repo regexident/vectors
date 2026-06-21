@@ -5,7 +5,9 @@ use vectors::sparse::SparseVector;
 use vectors::{Distance, Dot};
 
 /// Convert a sparse vector to a dense equivalent by zero-filling missing indices.
-fn to_dense<T: Copy + Zero>(sparse: &SparseVector<T, Vec<(usize, T)>>) -> DenseVector<T, Vec<T>> {
+fn to_dense<T: Copy + Zero>(
+    sparse: &SparseVector<usize, T, Vec<(usize, T)>>,
+) -> DenseVector<T, Vec<T>> {
     let max_index = sparse.iter().map(|(i, _)| i).max().unwrap_or(0);
     let capacity = max_index + 1;
     let mut dense_components = vec![T::zero(); capacity];
@@ -34,17 +36,21 @@ fn assert_dense_eq(a: &DenseVector<f64, Vec<f64>>, b: &DenseVector<f64, Vec<f64>
 
 // MARK: Strategies
 
-fn sparse_strategy() -> impl Strategy<Value = SparseVector<f64, Vec<(usize, f64)>>> {
-    proptest::collection::vec((0_usize..20, -10.0_f64..10.0), 0..15)
-        .prop_map(|mut pairs| {
-            pairs.sort_by_key(|(k, _)| *k);
-            pairs.dedup_by_key(|(k, _)| *k);
-            pairs.retain(|(_, v)| !v.is_zero());
-            SparseVector::from_sorted_unchecked(pairs)
-        })
+fn sparse_strategy() -> impl Strategy<Value = SparseVector<usize, f64, Vec<(usize, f64)>>> {
+    proptest::collection::vec((0_usize..20, -10.0_f64..10.0), 0..15).prop_map(|mut pairs| {
+        pairs.sort_by_key(|(k, _)| *k);
+        pairs.dedup_by_key(|(k, _)| *k);
+        pairs.retain(|(_, v)| !v.is_zero());
+        SparseVector::from_sorted_unchecked(pairs)
+    })
 }
 
-fn sparse_pair_strategy() -> impl Strategy<Value = (SparseVector<f64, Vec<(usize, f64)>>, SparseVector<f64, Vec<(usize, f64)>>)> {
+fn sparse_pair_strategy() -> impl Strategy<
+    Value = (
+        SparseVector<usize, f64, Vec<(usize, f64)>>,
+        SparseVector<usize, f64, Vec<(usize, f64)>>,
+    ),
+> {
     (sparse_strategy(), sparse_strategy())
 }
 
@@ -129,8 +135,8 @@ mod edge_cases {
 
     #[test]
     fn empty_sparse_vectors() {
-        let a: SparseVector<f64, _> = SparseVector::from(vec![]);
-        let b: SparseVector<f64, _> = SparseVector::from(vec![]);
+        let a: SparseVector<usize, f64, _> = SparseVector::try_from(vec![]).unwrap();
+        let b: SparseVector<usize, f64, _> = SparseVector::try_from(vec![]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert_eq!(dot, 0.0);
@@ -141,8 +147,8 @@ mod edge_cases {
 
     #[test]
     fn single_element_vectors() {
-        let a = SparseVector::from(vec![(5, 3.0_f64)]);
-        let b = SparseVector::from(vec![(5, 4.0_f64)]);
+        let a = SparseVector::try_from(vec![(5, 3.0_f64)]).unwrap();
+        let b = SparseVector::try_from(vec![(5, 4.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 12.0).abs() < 1e-9);
@@ -151,8 +157,8 @@ mod edge_cases {
 
     #[test]
     fn single_element_different_keys() {
-        let a = SparseVector::from(vec![(1, 3.0_f64)]);
-        let b = SparseVector::from(vec![(5, 4.0_f64)]);
+        let a = SparseVector::try_from(vec![(1, 3.0_f64)]).unwrap();
+        let b = SparseVector::try_from(vec![(5, 4.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 0.0).abs() < 1e-9);
@@ -161,8 +167,8 @@ mod edge_cases {
 
     #[test]
     fn large_indices() {
-        let a = SparseVector::from(vec![(0, 1.0_f64), (1_000_000, 2.0_f64)]);
-        let b = SparseVector::from(vec![(1_000_000, 3.0_f64)]);
+        let a = SparseVector::try_from(vec![(0, 1.0_f64), (1_000_000, 2.0_f64)]).unwrap();
+        let b = SparseVector::try_from(vec![(1_000_000, 3.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         let dist: f64 = a.squared_distance(&b);
         assert!((dot - 6.0).abs() < 1e-9);
@@ -171,14 +177,14 @@ mod edge_cases {
 
     #[test]
     fn zero_dimensional_after_canonicalization() {
-        let a = SparseVector::try_from_unsorted(vec![(0, 0.0_f64)]);
+        let a = SparseVector::from_unsorted(vec![(0, 0.0_f64)]);
         assert!(a.is_empty());
     }
 
     #[test]
     fn nan_propagation_f64() {
-        let a = SparseVector::from(vec![(0, f64::NAN)]);
-        let b = SparseVector::from(vec![(0, 1.0_f64)]);
+        let a = SparseVector::try_from(vec![(0, f64::NAN)]).unwrap();
+        let b = SparseVector::try_from(vec![(0, 1.0_f64)]).unwrap();
         let dot: f64 = a.dot(&b);
         assert!(dot.is_nan());
         let dist: f64 = a.squared_distance(&b);

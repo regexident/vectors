@@ -10,26 +10,13 @@ pub enum Join<L, R> {
     Right(R),
 }
 
-// MARK: Slice-based join iterators
-
-/// An outer-join iterator over two sorted `&[(usize, T)]` slices.
-pub struct OuterJoinIter<'a, T> {
-    left: &'a [(usize, T)],
-    right: &'a [(usize, T)],
-    left_pos: usize,
-    right_pos: usize,
-}
-
-/// An inner-join iterator over two sorted `&[(usize, T)]` slices.
-pub struct InnerJoinIter<'a, T> {
-    left: &'a [(usize, T)],
-    right: &'a [(usize, T)],
-    left_pos: usize,
-    right_pos: usize,
-}
+// MARK: Outer Join
 
 /// Creates an outer-join iterator over two sorted slices.
-pub fn outer_join<'a, T>(left: &'a [(usize, T)], right: &'a [(usize, T)]) -> OuterJoinIter<'a, T> {
+pub fn outer_join<'a, Idx, T>(
+    left: &'a [(Idx, T)],
+    right: &'a [(Idx, T)],
+) -> OuterJoinIter<'a, Idx, T> {
     OuterJoinIter {
         left,
         right,
@@ -38,18 +25,20 @@ pub fn outer_join<'a, T>(left: &'a [(usize, T)], right: &'a [(usize, T)]) -> Out
     }
 }
 
-/// Creates an inner-join iterator over two sorted slices.
-pub fn inner_join<'a, T>(left: &'a [(usize, T)], right: &'a [(usize, T)]) -> InnerJoinIter<'a, T> {
-    InnerJoinIter {
-        left,
-        right,
-        left_pos: 0,
-        right_pos: 0,
-    }
+/// An outer-join iterator over two sorted `&[(Idx, T)]` slices.
+pub struct OuterJoinIter<'a, Idx, T> {
+    left: &'a [(Idx, T)],
+    right: &'a [(Idx, T)],
+    left_pos: usize,
+    right_pos: usize,
 }
 
-impl<T: Copy> Iterator for OuterJoinIter<'_, T> {
-    type Item = (usize, Join<T, T>);
+impl<Idx, T> Iterator for OuterJoinIter<'_, Idx, T>
+where
+    Idx: Ord + Copy,
+    T: Copy,
+{
+    type Item = (Idx, Join<T, T>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.left_pos >= self.left.len() && self.right_pos >= self.right.len() {
@@ -89,8 +78,34 @@ impl<T: Copy> Iterator for OuterJoinIter<'_, T> {
     }
 }
 
-impl<T: Copy> Iterator for InnerJoinIter<'_, T> {
-    type Item = (usize, (T, T));
+// MARK: Inner Join
+
+/// Creates an inner-join iterator over two sorted slices.
+pub fn inner_join<'a, Idx, T>(
+    left: &'a [(Idx, T)],
+    right: &'a [(Idx, T)],
+) -> InnerJoinIter<'a, Idx, T> {
+    InnerJoinIter {
+        left,
+        right,
+        left_pos: 0,
+        right_pos: 0,
+    }
+}
+/// An inner-join iterator over two sorted `&[(Idx, T)]` slices.
+pub struct InnerJoinIter<'a, Idx, T> {
+    left: &'a [(Idx, T)],
+    right: &'a [(Idx, T)],
+    left_pos: usize,
+    right_pos: usize,
+}
+
+impl<Idx, T> Iterator for InnerJoinIter<'_, Idx, T>
+where
+    Idx: Ord + Copy,
+    T: Copy,
+{
+    type Item = (Idx, (T, T));
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
