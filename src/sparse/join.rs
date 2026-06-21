@@ -1,5 +1,7 @@
 use core::cmp::Ordering;
 
+use super::galloping_seek;
+
 /// The result of a join between entries at matching positions.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Join<'a, T> {
@@ -157,74 +159,16 @@ where
                     self.small_pos += 1;
                 }
                 Ordering::Greater => {
-                    let n = self.large_i.len();
-                    if self.cursor + 1 >= n {
-                        self.cursor = n;
-                        self.small_pos += 1;
-                        continue;
-                    }
-
-                    // Phase 1: exponential search for first probe >= target
-                    let (last_lt, final_step) = {
-                        let mut step: usize = 1;
-                        let mut last_lt = self.cursor;
-                        loop {
-                            let probe = self.cursor.saturating_add(step);
-                            if probe >= n {
-                                break (last_lt, n - last_lt - 1);
-                            }
-                            // SAFETY: `probe < n` is guarded by the `if probe >= n`
-                            // check immediately above; `large_i` has length `n`.
-                            if unsafe { *self.large_i.get_unchecked(probe) } >= target {
-                                break (last_lt, step);
-                            }
-                            last_lt = probe;
-                            step = match step.checked_shl(1) {
-                                Some(s) => s,
-                                None => break (last_lt, n - last_lt - 1),
-                            };
-                        }
-                    };
-
-                    if final_step == 0 {
-                        self.cursor = n;
-                        self.small_pos += 1;
-                        continue;
-                    }
-
-                    // Phase 2: one-sided galloping (halving) toward target
-                    let mut step = final_step.next_power_of_two() >> 1;
-                    let mut pos = last_lt;
-                    while step > 0 {
-                        let probe = pos + step;
-                        // SAFETY: `probe < n` is checked in the same `if`, so
-                        // the access is in-bounds.
-                        if probe < n && unsafe { *self.large_i.get_unchecked(probe) } < target {
-                            pos = probe;
-                        }
-                        step >>= 1;
-                    }
-
-                    let insertion = pos + 1;
-                    // SAFETY: `insertion < n` is checked in the same `if`, so
-                    // the index access is in-bounds.
-                    if insertion < n && unsafe { *self.large_i.get_unchecked(insertion) } == target
-                    {
+                    if let Some(pos) = galloping_seek(self.large_i, &mut self.cursor, target) {
                         let item = (
                             target,
-                            (self.merge)(
-                                target,
-                                &self.small_v[self.small_pos],
-                                &self.large_v[insertion],
-                            ),
+                            (self.merge)(target, &self.small_v[self.small_pos], &self.large_v[pos]),
                         );
-                        self.cursor = insertion + 1;
                         self.small_pos += 1;
+
                         return Some(item);
-                    } else {
-                        self.cursor = insertion;
-                        self.small_pos += 1;
                     }
+                    self.small_pos += 1;
                 }
             }
         }

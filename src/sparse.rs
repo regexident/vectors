@@ -25,12 +25,15 @@ use crate::Vector;
 /// sorted pairs into SoA storage).
 pub mod util;
 
+mod common;
 mod distance;
 mod dot;
 mod iter;
 mod join;
 mod ops;
 mod storage;
+
+pub(crate) use self::common::*;
 
 pub use self::dot::dot_gallop;
 pub use self::iter::*;
