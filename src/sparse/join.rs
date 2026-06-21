@@ -132,7 +132,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.small_pos < self.small_i.len() && self.cursor < self.large_i.len() {
+            // SAFETY: `self.small_pos < self.small_i.len()` is verified by the
+            // while condition; `small_v` is parallel to `small_i`.
             let target = unsafe { *self.small_i.get_unchecked(self.small_pos) };
+            // SAFETY: `self.cursor < self.large_i.len()` is verified by the while
+            // condition; `large_v` is parallel to `large_i`.
             let current = unsafe { *self.large_i.get_unchecked(self.cursor) };
 
             match target.cmp(&current) {
@@ -169,6 +173,8 @@ where
                             if probe >= n {
                                 break (last_lt, n - last_lt - 1);
                             }
+                            // SAFETY: `probe < n` is guarded by the `if probe >= n`
+                            // check immediately above; `large_i` has length `n`.
                             if unsafe { *self.large_i.get_unchecked(probe) } >= target {
                                 break (last_lt, step);
                             }
@@ -191,6 +197,8 @@ where
                     let mut pos = last_lt;
                     while step > 0 {
                         let probe = pos + step;
+                        // SAFETY: `probe < n` is checked in the same `if`, so
+                        // the access is in-bounds.
                         if probe < n && unsafe { *self.large_i.get_unchecked(probe) } < target {
                             pos = probe;
                         }
@@ -198,6 +206,8 @@ where
                     }
 
                     let insertion = pos + 1;
+                    // SAFETY: `insertion < n` is checked in the same `if`, so
+                    // the index access is in-bounds.
                     if insertion < n && unsafe { *self.large_i.get_unchecked(insertion) } == target
                     {
                         let item = (

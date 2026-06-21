@@ -91,16 +91,23 @@ where
     let n = large_i.len();
 
     for k in 0..small_i.len() {
+        // SAFETY: `k` is bounded by `k < small_i.len()` via the loop
+        // `for k in 0..small_i.len()`, so this access is in-bounds.
         let target = unsafe { *small_i.get_unchecked(k) };
 
         if cursor >= n {
             break;
         }
 
+        // SAFETY: `cursor < n` is guarded by the check above (`cursor >= n` would
+        // have broken), and `large_i` has length `n`, so this access is in-bounds.
         let current = unsafe { *large_i.get_unchecked(cursor) };
         if current == target {
             assert!(k < small_v.len());
             assert!(cursor < large_v.len());
+            // SAFETY: Both `k` and `cursor` are in-bounds — `k` is bounded by the
+            // loop, `cursor` by the prior `cursor < n` check. `small_v` and `large_v`
+            // are parallel slices to `small_i`/`large_i`, so lengths match.
             sum = sum + (unsafe { *small_v.get_unchecked(k) * *large_v.get_unchecked(cursor) });
             cursor += 1;
             continue;
@@ -121,6 +128,8 @@ where
                 if probe >= n {
                     break (last_lt, n - last_lt - 1);
                 }
+                // SAFETY: `probe < n` is verified by the `if probe >= n` check
+                // immediately above, and `large_i` has length `n`.
                 if unsafe { *large_i.get_unchecked(probe) } >= target {
                     break (last_lt, step);
                 }
@@ -143,6 +152,8 @@ where
         let mut pos = last_lt;
         while step > 0 {
             let probe = pos + step;
+            // SAFETY: The `probe < n` condition is checked in the same `if`, so
+            // this access is in-bounds by construction.
             if probe < n && unsafe { *large_i.get_unchecked(probe) } < target {
                 pos = probe;
             }
@@ -151,6 +162,9 @@ where
 
         let insertion = pos + 1;
 
+        // SAFETY: `insertion < n` is checked in the same `if` for the index
+        // access; `k` is bounded by the loop and `small_v` is parallel to
+        // `small_i`, so length matches.
         if insertion < n && unsafe { *large_i.get_unchecked(insertion) } == target {
             assert!(k < small_v.len());
             assert!(insertion < large_v.len());
