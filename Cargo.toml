@@ -4,12 +4,11 @@ description = "Sparse & dense vectors for use in high dimensional vector spaces"
 categories = ["science"]
 repository = "https://github.com/Regexident/vectors"
 keywords = [
-    "vectors",
-    "dense",
-    "sparse",
-    "machine-learning",
+    "sparse-vector",
+    "no-std",
+    "vector-algebra",
     "vector-space",
-    "linear-algebra",
+    "machine-learning",
 ]
 license = "MPL-2.0"
 readme = "README.md"
