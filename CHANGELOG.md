@@ -50,7 +50,7 @@ Please make sure to add your changes to the appropriate categories:
 
 - n/a
 
-## [0.3.0] - 2018-05-12
+## [0.4.0] - 2026-06-22
 
 ### Added
 
@@ -103,7 +103,7 @@ Please make sure to add your changes to the appropriate categories:
 
 - n/a
 
-## [0.4.0] - tbd
+## [0.3.0] - 2018-05-12
 
 ### Added
 
