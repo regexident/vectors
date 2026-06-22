@@ -18,7 +18,7 @@ rust-version = "1.85.1"
 version = "0.3.0"
 
 [dependencies]
-arrayvec = "^0.7"
+arrayvec = { version = "^0.7", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 [dev-dependencies]
@@ -41,6 +41,6 @@ harness = false
 
 [features]
 default = ["std"]
-std = ["num-traits/std", "alloc"]
+std = ["alloc", "arrayvec/std", "num-traits/std"]
 alloc = []
 libm = ["num-traits/libm"]
