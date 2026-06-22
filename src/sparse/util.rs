@@ -1,6 +1,5 @@
 // MARK: Helper functions
 
-#[cfg(feature = "alloc")]
 use num_traits::Zero;
 
 /// Sorts entries by index, deduplicates (keeping an arbitrary value for each index), drops zeros.
@@ -26,7 +25,6 @@ use num_traits::Zero;
 ///
 /// Phase 3 — Compact: swap kept region [len-kept, len) to the front [0, kept).
 /// ```
-#[cfg(feature = "alloc")]
 #[must_use]
 pub fn canonicalize_entries<T, Idx>(
     indices: &mut [Idx],
@@ -104,7 +102,6 @@ where
     kept
 }
 
-#[cfg(feature = "alloc")]
 fn sift_down<T, Idx: Ord>(indices: &mut [Idx], values: &mut [T], mut root: usize, end: usize) {
     loop {
         let left = 2 * root + 1;
@@ -128,7 +125,7 @@ fn sift_down<T, Idx: Ord>(indices: &mut [Idx], values: &mut [T], mut root: usize
     }
 }
 
-#[cfg(all(test, feature = "alloc"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 

@@ -10,7 +10,6 @@ use crate::{FromIteratorLossy, Index, TryFromIterator};
 
 #[cfg(feature = "alloc")]
 use super::SparseVecIntoIter;
-#[cfg(feature = "alloc")]
 use super::util::canonicalize_entries;
 
 use super::{SparseArrayVecIntoIter, SparseSliceIter};
@@ -83,7 +82,6 @@ pub trait SparseStorage<Idx, T> {
 // MARK: Vec Storage
 
 /// Errors that can occur when constructing a sparse vector from unsorted input.
-#[cfg(feature = "alloc")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum SparseVecStorageError<Idx> {
     /// Indices are not in strictly increasing order; the value at this index was out of order.
@@ -98,7 +96,6 @@ pub enum SparseVecStorageError<Idx> {
     },
 }
 
-#[cfg(feature = "alloc")]
 impl<Idx: fmt::Display> fmt::Display for SparseVecStorageError<Idx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -420,7 +417,7 @@ where
     }
 }
 
-#[cfg(feature = "alloc")]
+// #[cfg(feature = "alloc")]
 impl<Idx, T, const N: usize> FromIteratorLossy<(Idx, T)> for SparseArrayVecStorage<Idx, T, N>
 where
     Idx: Ord + Copy,
