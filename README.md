@@ -1,6 +1,6 @@
 # vectors
 
-[![CI](https://github.com/Regexident/vectors/actions/workflows/ci.yml/badge.svg)](https://github.com/Regexident/vectors/actions/workflows/ci.yml)
+[![CI](https://github.com/Regexident/vectors/actions/workflows/rust.yml/badge.svg)](https://github.com/Regexident/vectors/actions/workflows/rust.yml)
 [![Version](https://img.shields.io/crates/v/vectors.svg?style=flat-square)](https://crates.io/crates/vectors/)
 [![License](https://img.shields.io/crates/l/vectors.svg?style=flat-square)](https://crates.io/crates/vectors/)
 
