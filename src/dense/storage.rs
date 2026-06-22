@@ -56,7 +56,6 @@ pub trait DenseStorage<T>: Sized {
 /// This enum is empty because construction from a [`Vec`] is always
 /// infallible (unlike fixed-capacity storage). It exists so that
 /// [`DenseVecStorage`] satisfies [`TryFromIterator`].
-#[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub enum DenseVecStorageError {}
 
