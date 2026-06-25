@@ -116,7 +116,7 @@ impl<Idx: fmt::Display> fmt::Display for SparseVecStorageError<Idx> {
 /// `(index, value)` pairs is fallible; see
 /// [`SparseVecStorageError`].
 #[cfg(feature = "alloc")]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct SparseVecStorage<Idx, T> {
     indices: Vec<Idx>,
     values: Vec<T>,
@@ -315,7 +315,7 @@ impl<Idx: fmt::Display> fmt::Display for SparseArrayVecStorageError<Idx> {
 /// buffers in a struct-of-arrays layout. Construction from an
 /// iterator of `(index, value)` pairs is fallible; see
 /// [`SparseArrayVecStorageError`].
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct SparseArrayVecStorage<Idx, T, const N: usize> {
     indices: ArrayVec<Idx, N>,
     values: ArrayVec<T, N>,

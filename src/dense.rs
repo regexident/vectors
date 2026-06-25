@@ -52,7 +52,7 @@ pub trait DenseVector: Vector {
 }
 
 /// A dense vector backed by storage `S`.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct GenericDenseVec<T, S> {
     pub(crate) storage: S,
     _phantom: PhantomData<T>,

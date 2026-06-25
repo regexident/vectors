@@ -66,7 +66,7 @@ pub trait SparseVector: Vector {
 }
 
 /// A sparse vector backed by SoA storage: `indices: SI` and `values: SV`.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct GenericSparseVec<Idx, T, S> {
     pub(crate) storage: S,
     _phantom: PhantomData<(Idx, T)>,

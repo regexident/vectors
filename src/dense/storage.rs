@@ -64,7 +64,7 @@ pub enum DenseVecStorageError {}
 /// Wraps a [`Vec<T>`] where every element is a component. Construction
 /// from an iterator is always infallible.
 #[cfg(feature = "alloc")]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct DenseVecStorage<T> {
     values: Vec<T>,
 }
@@ -184,7 +184,7 @@ impl fmt::Display for DenseArrayVecStorageError {
 ///
 /// Construction from an iterator fails ([`DenseArrayVecStorageError::StorageExceeded`]) when the
 /// number of elements exceeds `N`.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct DenseArrayVecStorage<T, const N: usize> {
     values: ArrayVec<T, N>,
 }
